@@ -8,6 +8,9 @@ import com.physio.infrastructure.out.persistence.repository.AtendimentoJpaReposi
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 @Component
 @RequiredArgsConstructor
 public class AtendimentoPersistenceAdapter implements AtendimentoRepositoryPort {
@@ -24,7 +27,7 @@ public class AtendimentoPersistenceAdapter implements AtendimentoRepositoryPort 
 
     @Override
     public Atendimento buscarPorId(Long id) {
-        return jpaRepository.findById(id)
+        return jpaRepository.findById(Math.toIntExact(id))
                 .map(mapper::toDomain)
                 .orElse(null);
     }
@@ -37,6 +40,23 @@ public class AtendimentoPersistenceAdapter implements AtendimentoRepositoryPort 
     @Override
     public void deletar(Long id) {
         if (id == null) return;
-        jpaRepository.deleteById(id);
+        jpaRepository.deleteById(Math.toIntExact(id));
+    }
+
+    // --- NOVOS MÉTODOS ---
+    @Override
+    public List<Atendimento> listarPorPeriodo(LocalDateTime inicio, LocalDateTime fim) {
+        return jpaRepository.findByDataHoraInicioBetween(inicio, fim)
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Atendimento> listarPorPaciente(Long pacienteId) {
+        return jpaRepository.findByPaciente_Id(pacienteId.intValue())
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
     }
 }

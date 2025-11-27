@@ -12,9 +12,13 @@ import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Slf4j
 @RestController
@@ -62,13 +66,15 @@ public class AgendamentoController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @Operation(summary = "Listar atendimentos", description = "Retorna todos os atendimentos cadastrados")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
-    })
+    @Operation(summary = "Listar atendimentos", description = "Lista com filtros opcionais de data ou paciente")
     @GetMapping
-    public ResponseEntity<?> listarAtendimentos() {
-        var lista = listarAtendimentosUseCase.listarTodos();
+    public ResponseEntity<List<AtendimentoResponseDTO>> listarAtendimentos(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataFim,
+            @RequestParam(required = false) Long pacienteId
+    ) {
+        var lista = listarAtendimentosUseCase.listar(dataInicio, dataFim, pacienteId);
+
         var dtos = lista.stream().map(a -> AtendimentoResponseDTO.builder()
                 .id(a.getId())
                 .pacienteId(a.getPaciente().getId())
@@ -79,9 +85,9 @@ public class AgendamentoController {
                 .pctProfissionalSnapshot(a.getPctProfissionalSnapshot())
                 .status(a.getStatus())
                 .build()).toList();
+
         return ResponseEntity.ok(dtos);
     }
-
     @Operation(summary = "Buscar atendimento por ID")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Atendimento encontrado"),

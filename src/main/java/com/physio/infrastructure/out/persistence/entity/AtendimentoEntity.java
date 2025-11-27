@@ -7,7 +7,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.time.LocalDateTime;
 
 @Entity
@@ -22,12 +21,12 @@ public class AtendimentoEntity {
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "paciente_id", nullable = false) // ajuste o nome caso seja diferente no DB
+    @JoinColumn(name = "paciente_id", nullable = false)
     private PacienteEntity paciente;
 
     @OneToOne
     @JoinColumn(name = "servico_base_id", nullable = false)
-    private ServicoConfigEntity servicoBaseId;
+    private ServicoConfigEntity servicoBase;
 
     @Column(name = "data_hora_inicio", nullable = false)
     private LocalDateTime dataHoraInicio;
@@ -64,3 +63,4 @@ public class AtendimentoEntity {
     }
 
 }
+
