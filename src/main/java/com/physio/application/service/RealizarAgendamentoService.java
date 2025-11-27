@@ -43,6 +43,10 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
                 .status("AGENDADO")
                 .build();
 
+        boolean conflito = atendimentoRepositoryPort.existeAgendamentoNoHorario(atendimento.getDataHoraInicio(), atendimento.getDataHoraFim());
+        if (conflito)
+            throw new IllegalArgumentException("Já existe um agendamento neste horário!");
+
         // REGRA DE NEGÓCIO CRÍTICA: Criar snapshot financeiro
         // Copia os valores do serviço para o atendimento, garantindo histórico financeiro
         atendimento.criarSnapshotFinanceiro(servico);

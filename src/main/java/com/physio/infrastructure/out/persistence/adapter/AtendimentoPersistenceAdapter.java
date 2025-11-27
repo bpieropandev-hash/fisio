@@ -59,4 +59,9 @@ public class AtendimentoPersistenceAdapter implements AtendimentoRepositoryPort 
                 .map(mapper::toDomain)
                 .toList();
     }
+
+    @Override
+    public boolean existeAgendamentoNoHorario(LocalDateTime inicio, LocalDateTime fim) {
+        return existeAgendamentoNoHorario(inicio, fim);
+    }
 }

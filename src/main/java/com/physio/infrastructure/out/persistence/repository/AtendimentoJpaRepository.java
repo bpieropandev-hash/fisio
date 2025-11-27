@@ -2,6 +2,7 @@ package com.physio.infrastructure.out.persistence.repository;
 
 import com.physio.infrastructure.out.persistence.entity.AtendimentoEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -16,4 +17,9 @@ public interface AtendimentoJpaRepository extends JpaRepository<AtendimentoEntit
 
     // Busca para o Prontuário
     List<AtendimentoEntity> findByPaciente_Id(Integer pacienteId);
+
+    @Query("SELECT COUNT(a) > 0 FROM AtendimentoEntity a WHERE " +
+            "(a.dataHoraInicio < :fim AND a.dataHoraFim > :inicio) " +
+            "AND a.status <> 'CANCELADO'")
+    boolean existsConflitoDeHorario(LocalDateTime inicio, LocalDateTime fim);
 }
