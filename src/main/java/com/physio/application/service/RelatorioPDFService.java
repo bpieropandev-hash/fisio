@@ -11,15 +11,18 @@ import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
 public class RelatorioPDFService {
 
     private final AtendimentoRepositoryPort repository;
+    private final NumberFormat nf = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
 
     public byte[] gerarRelatorioFinanceiro(int mes, int ano) {
         LocalDateTime inicio = LocalDateTime.of(ano, mes, 1, 0, 0);
@@ -61,9 +64,9 @@ public class RelatorioPDFService {
                 // Cálculos
                 BigDecimal valor = a.getValorCobrado();
                 BigDecimal parteProf = valor.multiply(a.getPctProfissionalSnapshot()).divide(new BigDecimal(100));
-                
-                addCell(table, "R$ " + valor.toString(), false);
-                addCell(table, "R$ " + parteProf.toString(), false);
+
+                addCell(table, nf.format(valor), false);
+                addCell(table, nf.format(parteProf), false);
                 
                 totalGeral = totalGeral.add(valor);
                 totalProf = totalProf.add(parteProf);
@@ -73,9 +76,9 @@ public class RelatorioPDFService {
             document.add(Chunk.NEWLINE);
 
             // Totais
-            document.add(new Paragraph("Faturamento Total: R$ " + totalGeral));
-            document.add(new Paragraph("Repasse Profissional: R$ " + totalProf));
-            document.add(new Paragraph("Lucro Clínica: R$ " + totalGeral.subtract(totalProf)));
+            document.add(new Paragraph("Faturamento Total: R$ " + nf.format(totalGeral)));
+            document.add(new Paragraph("Repasse Profissional: R$ " + nf.format(totalProf)));
+            document.add(new Paragraph("Lucro Clínica: R$ " + nf.format(totalGeral.subtract(totalProf))));
 
             document.close();
             return out.toByteArray();
