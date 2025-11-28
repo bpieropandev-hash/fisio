@@ -24,6 +24,8 @@ public class Atendimento {
     private BigDecimal pctClinicaSnapshot;
     private BigDecimal pctProfissionalSnapshot;
     private String evolucao;
+    private Recebedor recebedor;
+    private TipoPagamento tipoPagamento;
     
     // Método de negócio para criar snapshot financeiro
     public void criarSnapshotFinanceiro(ServicoConfig servico) {

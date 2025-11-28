@@ -1,5 +1,7 @@
 package com.physio.infrastructure.out.persistence.entity;
 
+import com.physio.domain.model.Recebedor;
+import com.physio.domain.model.TipoPagamento;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -48,6 +50,14 @@ public class AtendimentoEntity {
 
     @Column(name="evolucao", columnDefinition = "TEXT")
     private String evolucao;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "recebedor", length = 10) // Opcional: define tamanho igual ao banco
+    private Recebedor recebedor;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_pagamento", length = 25)
+    private TipoPagamento tipoPagamento;
 
     public PacienteEntity getPaciente() {
         return paciente;

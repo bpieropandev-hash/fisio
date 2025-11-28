@@ -69,8 +69,8 @@ public class AgendamentoController {
     @Operation(summary = "Listar atendimentos", description = "Lista com filtros opcionais de data ou paciente")
     @GetMapping
     public ResponseEntity<List<AtendimentoResponseDTO>> listarAtendimentos(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataInicio,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataFim,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss.SSS") LocalDateTime dataInicio,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss.SSS") LocalDateTime dataFim,
             @RequestParam(required = false) Long pacienteId
     ) {
         var lista = listarAtendimentosUseCase.listar(dataInicio, dataFim, pacienteId);
@@ -123,6 +123,8 @@ public class AgendamentoController {
                 .dataHoraInicio(request.getDataHoraInicio())
                 .status(request.getStatus())
                 .evolucao(request.getEvolucao())
+                .recebedor(request.getRecebedor())
+                .tipoPagamento(request.getTipoPagamento())
                 .build();
 
         var atualizado = atualizarAtendimentoUseCase.atualizar(id, domain);

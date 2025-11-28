@@ -10,10 +10,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Slf4j
 @RestController
@@ -24,29 +28,20 @@ public class RelatorioController {
 
     private final RelatorioPDFService relatorioService;
 
-    @Operation(summary = "Exportar Relatório Financeiro", description = "Gera um PDF contendo o detalhamento financeiro do mês (Total Clínica vs Profissional).")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "PDF gerado com sucesso",
-                    content = @Content(mediaType = "application/pdf",
-                            schema = @Schema(type = "string", format = "binary"))), // <--- Isso habilita o download no Swagger
-            @ApiResponse(responseCode = "400", description = "Mês ou ano inválidos"),
-            @ApiResponse(responseCode = "500", description = "Erro interno na geração do PDF")
-    })
-    @GetMapping("/financeiro")
-    public ResponseEntity<byte[]> baixarRelatorioFinanceiro(
-            @Parameter(description = "Mês do relatório (1-12)", example = "11", required = true)
-            @RequestParam int mes,
+    @Operation(summary = "Relatório de Acerto Financeiro",
+            description = "Gera PDF com cálculo de repasse considerando quem recebeu o pagamento.")
+    @GetMapping("/acerto-financeiro")
+    public ResponseEntity<byte[]> baixarRelatorioAcerto(
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss.SSS") LocalDateTime inicio,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss.SSS") LocalDateTime fim,
+            @RequestParam List<Integer> servicoIds) { // Ex: ?servicoIds=1,2,3
 
-            @Parameter(description = "Ano do relatório", example = "2025", required = true)
-            @RequestParam int ano) {
+        byte[] pdfBytes = relatorioService.gerarRelatorioPersonalizado(inicio, fim, servicoIds);
 
-        log.info("Gerando relatório financeiro para {}/{}", mes, ano);
-
-        byte[] pdfBytes = relatorioService.gerarRelatorioFinanceiro(mes, ano);
+        String fileName = "acerto_" + inicio.toLocalDate() + "_a_" + fim.toLocalDate() + ".pdf";
 
         return ResponseEntity.ok()
-                // O header abaixo força o navegador a baixar o arquivo em vez de tentar abrir
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=financeiro_" + mes + "_" + ano + ".pdf")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName)
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(pdfBytes);
     }

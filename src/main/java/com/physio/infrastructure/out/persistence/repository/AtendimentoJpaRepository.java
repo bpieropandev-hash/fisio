@@ -3,6 +3,7 @@ package com.physio.infrastructure.out.persistence.repository;
 import com.physio.infrastructure.out.persistence.entity.AtendimentoEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -22,4 +23,15 @@ public interface AtendimentoJpaRepository extends JpaRepository<AtendimentoEntit
             "(a.dataHoraInicio < :fim AND a.dataHoraFim > :inicio) " +
             "AND a.status <> 'CANCELADO'")
     boolean existsConflitoDeHorario(LocalDateTime inicio, LocalDateTime fim);
+
+    @Query("SELECT a FROM AtendimentoEntity a " +
+            "WHERE a.dataHoraInicio BETWEEN :inicio AND :fim " +
+            "AND a.servicoBase.id IN :servicoIds " +
+            "AND a.recebedor IS NOT NULL " +
+            "ORDER BY a.dataHoraInicio ASC")
+    List<AtendimentoEntity> findParaRelatorioFinanceiro(
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fim") LocalDateTime fim,
+            @Param("servicoIds") List<Integer> servicoIds
+    );
 }

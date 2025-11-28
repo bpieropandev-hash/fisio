@@ -1,6 +1,8 @@
 package com.physio.infrastructure.in.web.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.physio.domain.model.Recebedor;
+import com.physio.domain.model.TipoPagamento;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,4 +26,7 @@ public class AtendimentoUpdateRequestDTO {
 
     @Schema(description = "Texto de evolução / prontuário")
     private String evolucao;
+
+    private Recebedor recebedor;
+    private TipoPagamento tipoPagamento;
 }

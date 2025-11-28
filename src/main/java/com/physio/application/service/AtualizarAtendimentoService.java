@@ -24,6 +24,8 @@ public class AtualizarAtendimentoService implements AtualizarAtendimentoUseCase 
         if (atendimento.getDataHoraFim() != null) existente.setDataHoraFim(atendimento.getDataHoraFim());
         if (atendimento.getStatus() != null) existente.setStatus(atendimento.getStatus());
         if (atendimento.getEvolucao() != null) existente.setEvolucao(atendimento.getEvolucao());
+        if(atendimento.getRecebedor() != null) existente.setRecebedor(atendimento.getRecebedor());
+        if (atendimento.getTipoPagamento() != null) existente.setTipoPagamento(atendimento.getTipoPagamento());
 
         var salvo = atendimentoRepositoryPort.salvar(existente);
         log.info("Atendimento atualizado - ID: {}", salvo.getId());
