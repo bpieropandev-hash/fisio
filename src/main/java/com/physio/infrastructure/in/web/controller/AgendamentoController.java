@@ -33,45 +33,60 @@ public class AgendamentoController {
     private final com.physio.domain.ports.in.AtualizarAtendimentoUseCase atualizarAtendimentoUseCase;
     private final com.physio.domain.ports.in.DeletarAtendimentoUseCase deletarAtendimentoUseCase;
 
-    @Operation(summary = "Realizar agendamento", description = "Cria um atendimento com snapshot financeiro do serviço")
+    @Operation(
+            summary = "Realizar agendamento", 
+            description = "Cria um ou múltiplos atendimentos com snapshot financeiro do serviço. " +
+                         "Se 'dataFimRecorrencia' for informado, cria agendamentos recorrentes nos dias da semana especificados " +
+                         "(ou no mesmo dia da semana da data inicial se 'diasSemana' não for informado). " +
+                         "Sempre retorna uma lista, mesmo para agendamento único."
+    )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Atendimento criado com sucesso"),
+            @ApiResponse(responseCode = "201", description = "Atendimento(s) criado(s) com sucesso"),
             @ApiResponse(responseCode = "400", description = "Requisição inválida"),
             @ApiResponse(responseCode = "404", description = "Paciente ou serviço não encontrado")
     })
     @PostMapping
-    public ResponseEntity<AtendimentoResponseDTO> realizarAgendamento(
-            @Valid @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Dados necessários para criar um agendamento") @RequestBody AgendamentoRequestDTO request) {
+    public ResponseEntity<List<AtendimentoResponseDTO>> realizarAgendamento(
+            @Valid @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Dados necessários para criar um agendamento (único ou recorrente)") 
+            @RequestBody AgendamentoRequestDTO request) {
 
-        log.info("Recebendo requisição de agendamento - Paciente: {}, Serviço: {}, Data/Hora: {}",
-                request.getPacienteId(), request.getServicoId(), request.getDataHora());
+        log.info("Recebendo requisição de agendamento - Paciente: {}, Serviço: {}, Data/Hora: {}, Recorrente: {}",
+                request.getPacienteId(), request.getServicoId(), request.getDataHora(), 
+                request.getDataFimRecorrencia() != null);
 
-        Atendimento atendimento = realizarAgendamentoUseCase.realizarAgendamento(
+        // Chamar o use case (agora sempre retorna lista)
+        var atendimentos = realizarAgendamentoUseCase.realizarAgendamento(
                 request.getPacienteId(),
                 request.getServicoId(),
-                request.getDataHora()
+                request.getDataHora(),
+                request.getDataFimRecorrencia(),
+                request.getDiasSemana()
         );
 
-        AtendimentoResponseDTO response = AtendimentoResponseDTO.builder()
-                .id(atendimento.getId())
-                .pacienteId(atendimento.getPaciente().getId())
-                .servicoBaseId(atendimento.getServicoBase().getId())
-                .dataHoraInicio(atendimento.getDataHoraInicio())
-                .valorCobrado(atendimento.getValorCobrado())
-                .pctClinicaSnapshot(atendimento.getPctClinicaSnapshot())
-                .pctProfissionalSnapshot(atendimento.getPctProfissionalSnapshot())
-                .status(atendimento.getStatus())
-                .build();
+        // Converter para DTOs
+        var dtos = atendimentos.stream()
+                .map(a -> AtendimentoResponseDTO.builder()
+                        .id(a.getId())
+                        .pacienteId(a.getPaciente().getId())
+                        .servicoBaseId(a.getServicoBase().getId())
+                        .dataHoraInicio(a.getDataHoraInicio())
+                        .valorCobrado(a.getValorCobrado())
+                        .pctClinicaSnapshot(a.getPctClinicaSnapshot())
+                        .pctProfissionalSnapshot(a.getPctProfissionalSnapshot())
+                        .status(a.getStatus())
+                        .build())
+                .toList();
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        log.info("Agendamento concluído - {} atendimento(s) criado(s)", dtos.size());
+        return ResponseEntity.status(HttpStatus.CREATED).body(dtos);
     }
 
     @Operation(summary = "Listar atendimentos", description = "Lista com filtros opcionais de data ou paciente")
     @GetMapping
     public ResponseEntity<List<AtendimentoResponseDTO>> listarAtendimentos(
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss.SSS") LocalDateTime dataInicio,
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss.SSS") LocalDateTime dataFim,
-            @RequestParam(required = false) Long pacienteId
+            @RequestParam(required = false) @Parameter(description = "Data/hora inicial (formato: yyyy-MM-dd HH:mm:ss.SSS)", example = "2025-11-01 00:00:00.000") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss.SSS") LocalDateTime dataInicio,
+            @RequestParam(required = false) @Parameter(description = "Data/hora final (formato: yyyy-MM-dd HH:mm:ss.SSS)", example = "2025-11-30 23:59:59.999") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss.SSS") LocalDateTime dataFim,
+            @RequestParam(required = false) @Parameter(description = "ID do paciente para filtrar", example = "1") Long pacienteId
     ) {
         var lista = listarAtendimentosUseCase.listar(dataInicio, dataFim, pacienteId);
 
@@ -84,6 +99,9 @@ public class AgendamentoController {
                 .pctClinicaSnapshot(a.getPctClinicaSnapshot())
                 .pctProfissionalSnapshot(a.getPctProfissionalSnapshot())
                 .status(a.getStatus())
+                .evolucao(a.getEvolucao())
+                .recebedor(a.getRecebedor() != null ? a.getRecebedor().name() : null)
+                .tipoPagamento(a.getTipoPagamento() !=  null ? a.getTipoPagamento().name() : null)
                 .build()).toList();
 
         return ResponseEntity.ok(dtos);

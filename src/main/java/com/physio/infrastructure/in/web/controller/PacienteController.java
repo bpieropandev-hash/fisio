@@ -6,15 +6,16 @@ import com.physio.infrastructure.in.web.dto.PacienteCreateRequestDTO;
 import com.physio.infrastructure.in.web.dto.PacienteResponseDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.Parameter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @Slf4j
 @RestController
@@ -29,10 +30,10 @@ public class PacienteController {
     private final com.physio.domain.ports.in.AtualizarPacienteUseCase atualizarPacienteUseCase;
 
     @Operation(summary = "Criar paciente")
-    @ApiResponses({@ApiResponse(responseCode = "201", description = "Paciente criado"), @ApiResponse(responseCode = "400", description = "Dados inválidos")})
+    @ApiResponse(responseCode = "201", description = "Paciente criado")
+    @ApiResponse(responseCode = "400", description = "Dados inválidos")
     @PostMapping
     public ResponseEntity<PacienteResponseDTO> criarPaciente(@Valid @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Payload para criar paciente") @RequestBody PacienteCreateRequestDTO request) {
-        log.info("Recebendo requisição de criação de paciente - CPF: {}", request.getCpf());
 
         Paciente domain = Paciente.builder()
                 .nome(request.getNome())
@@ -74,9 +75,9 @@ public class PacienteController {
     }
 
     @Operation(summary = "Listar pacientes")
-    @ApiResponses({@ApiResponse(responseCode = "200", description = "Lista retornada")})
+    @ApiResponse(responseCode = "200", description = "Lista retornada")
     @GetMapping
-    public ResponseEntity<?> listarPacientes() {
+    public ResponseEntity<List<PacienteResponseDTO>> listarPacientes() {
         var lista = listarPacientesUseCase.listarTodos();
         var dtos = lista.stream().map(p -> PacienteResponseDTO.builder()
                 .id(p.getId())
@@ -94,12 +95,14 @@ public class PacienteController {
                 .complemento(p.getComplemento())
                 .anamnese(p.getAnamnese())
                 .dataCadastro(p.getDataCadastro())
+                .ativo(p.getAtivo())
                 .build()).toList();
         return ResponseEntity.ok(dtos);
     }
 
     @Operation(summary = "Buscar paciente por ID")
-    @ApiResponses({@ApiResponse(responseCode = "200", description = "Paciente encontrado"), @ApiResponse(responseCode = "404", description = "Paciente não encontrado")})
+    @ApiResponse(responseCode = "200", description = "Paciente encontrado")
+    @ApiResponse(responseCode = "404", description = "Paciente não encontrado")
     @GetMapping("/{id}")
     public ResponseEntity<PacienteResponseDTO> buscarPorId(@Parameter(description = "ID do paciente", example = "1") @PathVariable Long id) {
         var opt = buscarPacienteUseCase.buscarPorId(id);
@@ -126,7 +129,8 @@ public class PacienteController {
     }
 
     @Operation(summary = "Atualizar paciente")
-    @ApiResponses({@ApiResponse(responseCode = "200", description = "Paciente atualizado"), @ApiResponse(responseCode = "404", description = "Paciente não encontrado")})
+    @ApiResponse(responseCode = "200", description = "Paciente atualizado")
+    @ApiResponse(responseCode = "404", description = "Paciente não encontrado")
     @PutMapping("/{id}")
     public ResponseEntity<PacienteResponseDTO> atualizarPaciente(@Parameter(description = "ID do paciente", example = "1") @PathVariable Long id, @Valid @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Payload de atualização") @RequestBody PacienteCreateRequestDTO request) {
         var domain = Paciente.builder()

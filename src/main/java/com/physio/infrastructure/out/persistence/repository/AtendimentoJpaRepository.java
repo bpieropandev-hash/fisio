@@ -1,4 +1,4 @@
-package com.physio.infrastructure.out.persistence.repository;
+        package com.physio.infrastructure.out.persistence.repository;
 
 import com.physio.infrastructure.out.persistence.entity.AtendimentoEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -33,5 +33,26 @@ public interface AtendimentoJpaRepository extends JpaRepository<AtendimentoEntit
             @Param("inicio") LocalDateTime inicio,
             @Param("fim") LocalDateTime fim,
             @Param("servicoIds") List<Integer> servicoIds
+    );
+
+    // Buscar atendimentos concluídos no mês para dashboard
+    @Query("SELECT COUNT(a) FROM AtendimentoEntity a " +
+            "WHERE a.status = 'CONCLUIDO' " +
+            "AND a.dataHoraInicio >= :inicio " +
+            "AND a.dataHoraInicio < :fim")
+    Long countConcluidosPorMes(
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fim") LocalDateTime fim
+    );
+
+    // Buscar atendimentos avulsos concluídos com valor > 0 para cálculo de faturamento
+    @Query("SELECT a FROM AtendimentoEntity a " +
+            "WHERE a.status = 'CONCLUIDO' " +
+            "AND a.valorCobrado > 0 " +
+            "AND a.dataHoraInicio >= :inicio " +
+            "AND a.dataHoraInicio < :fim")
+    List<AtendimentoEntity> findAvulsosConcluidosPorMes(
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fim") LocalDateTime fim
     );
 }

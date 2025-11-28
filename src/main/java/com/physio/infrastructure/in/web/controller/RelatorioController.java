@@ -30,11 +30,16 @@ public class RelatorioController {
 
     @Operation(summary = "Relatório de Acerto Financeiro",
             description = "Gera PDF com cálculo de repasse considerando quem recebeu o pagamento.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "PDF gerado com sucesso",
+                    content = @Content(mediaType = "application/pdf")),
+            @ApiResponse(responseCode = "400", description = "Parâmetros inválidos")
+    })
     @GetMapping("/acerto-financeiro")
     public ResponseEntity<byte[]> baixarRelatorioAcerto(
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss.SSS") LocalDateTime inicio,
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss.SSS") LocalDateTime fim,
-            @RequestParam List<Integer> servicoIds) { // Ex: ?servicoIds=1,2,3
+            @RequestParam @Parameter(description = "Data/hora inicial (formato: yyyy-MM-dd HH:mm:ss.SSS)", example = "2025-11-01 00:00:00.000") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss.SSS") LocalDateTime inicio,
+            @RequestParam @Parameter(description = "Data/hora final (formato: yyyy-MM-dd HH:mm:ss.SSS)", example = "2025-11-30 23:59:59.999") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss.SSS") LocalDateTime fim,
+            @RequestParam @Parameter(description = "IDs dos serviços a filtrar", example = "1,2,3") List<Integer> servicoIds) {
 
         byte[] pdfBytes = relatorioService.gerarRelatorioPersonalizado(inicio, fim, servicoIds);
 

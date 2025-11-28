@@ -27,4 +27,8 @@ public class AtendimentoResponseDTO {
     private BigDecimal pctClinicaSnapshot;
     private BigDecimal pctProfissionalSnapshot;
     private String status;
+
+    private String evolucao;
+    private String recebedor;
+    private String tipoPagamento;
 }

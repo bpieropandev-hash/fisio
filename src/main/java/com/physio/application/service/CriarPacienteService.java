@@ -39,6 +39,7 @@ public class CriarPacienteService implements CriarPacienteUseCase {
             paciente.setAnamnese("");
         }
 
+        paciente.setAtivo(true);
 
 
         // Salvar via porta

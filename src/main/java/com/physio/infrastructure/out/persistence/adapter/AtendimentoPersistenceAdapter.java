@@ -62,6 +62,6 @@ public class AtendimentoPersistenceAdapter implements AtendimentoRepositoryPort 
 
     @Override
     public boolean existeAgendamentoNoHorario(LocalDateTime inicio, LocalDateTime fim) {
-        return existeAgendamentoNoHorario(inicio, fim);
+        return jpaRepository.existsConflitoDeHorario(inicio, fim);
     }
 }
