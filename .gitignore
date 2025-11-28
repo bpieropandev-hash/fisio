@@ -49,3 +49,5 @@ application-dev.properties
 # MapStruct generated files
 **/mapper/*Impl.java
 
+# Environment variable files
+.env

@@ -3,6 +3,8 @@ package com.physio.infrastructure.in.security;
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -15,11 +17,14 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-// Imports Novos para o CORS
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
@@ -30,9 +35,26 @@ import java.util.Arrays;
         bearerFormat = "JWT",
         scheme = "bearer"
 )
+@Slf4j
 public class SecurityConfigurations {
 
     private final SecurityFilter securityFilter;
+
+    // CORS configurável via variáveis de ambiente
+    @Value("${CORS_ALLOWED_ORIGINS:http://localhost:4200}")
+    private String corsAllowedOrigins;
+
+    @Value("${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS,HEAD}")
+    private String corsAllowedMethods;
+
+    @Value("${CORS_ALLOWED_HEADERS:*}")
+    private String corsAllowedHeaders;
+
+    @Value("${CORS_ALLOW_CREDENTIALS:false}")
+    private boolean corsAllowCredentials;
+
+    @Value("${CORS_MAX_AGE:3600}")
+    private long corsMaxAge;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -53,12 +75,43 @@ public class SecurityConfigurations {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Permite apenas o seu Frontend Angular (segurança)
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:4200"));
-        // Permite os métodos HTTP comuns
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "TRACE", "CONNECT"));
-        // Permite headers (Content-Type, Authorization, etc)
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+
+        // Parse origins from CSV env var
+        List<String> origins = Arrays.stream(corsAllowedOrigins.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
+
+        if (origins.isEmpty()) {
+            log.warn("Nenhuma origem CORS configurada via CORS_ALLOWED_ORIGINS; bloqueando todas as origens por segurança");
+            // Leaving allowedOrigins empty will effectively block cross-origin requests
+        } else if (origins.size() == 1 && "*".equals(origins.get(0))) {
+            // Note: Allowing all origins and credentials together is not allowed by browsers.
+            log.info("CORS configurado para permitir todas as origens ('*')");
+            configuration.setAllowedOrigins(Collections.singletonList("*"));
+        } else {
+            configuration.setAllowedOrigins(origins);
+            log.info("CORS allowed origins: {}", origins);
+        }
+
+        // Methods
+        List<String> methods = Arrays.stream(corsAllowedMethods.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
+        if (methods.isEmpty()) methods = Arrays.asList("GET","POST","PUT","DELETE","OPTIONS","HEAD");
+        configuration.setAllowedMethods(methods);
+
+        // Headers
+        List<String> headers = Arrays.stream(corsAllowedHeaders.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
+        if (headers.isEmpty()) headers = Collections.singletonList("*");
+        configuration.setAllowedHeaders(headers);
+
+        configuration.setAllowCredentials(corsAllowCredentials);
+        configuration.setMaxAge(corsMaxAge);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
