@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -40,5 +41,7 @@ public class AssinaturaResponseDTO {
 
     @Schema(example = "2025-01-01")
     private LocalDate dataInicio;
-}
 
+    @Schema(example = "2025-02-10T10:15:30")
+    private LocalDateTime dataCancelamento;
+}

@@ -8,7 +8,9 @@ import com.physio.domain.model.CobrancaMensal;
 import com.physio.domain.model.Recebedor;
 import com.physio.domain.ports.out.CobrancaMensalRepositoryPort;
 import com.physio.infrastructure.out.persistence.entity.AtendimentoEntity;
+import com.physio.infrastructure.out.persistence.entity.PacienteEntity;
 import com.physio.infrastructure.out.persistence.repository.AtendimentoJpaRepository;
+import com.physio.infrastructure.out.persistence.repository.PacienteJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -32,6 +34,7 @@ public class RelatorioPDFService {
 
     private final AtendimentoJpaRepository repository;
     private final CobrancaMensalRepositoryPort cobrancaMensalRepositoryPort;
+    private final PacienteJpaRepository pacienteRepository;
 
     public byte[] gerarRelatorioPersonalizado(LocalDateTime inicio, LocalDateTime fim, List<Integer> servicoIds) {
         // 1. Busca atendimentos com valor > 0 (fisioterapia avulsa)
@@ -214,6 +217,59 @@ public class RelatorioPDFService {
             return out.toByteArray();
         } catch (Exception e) {
             throw new RuntimeException("Erro ao gerar relatório", e);
+        }
+    }
+
+    public byte[] gerarProntuario(Long pacienteId) {
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Document document = new Document(PageSize.A4);
+            PdfWriter.getInstance(document, out);
+            document.open();
+
+            // Busca paciente explicitamente
+            PacienteEntity paciente = pacienteRepository.findById(Math.toIntExact(pacienteId))
+                    .orElse(null);
+
+            // Buscar atendimentos do paciente
+            List<AtendimentoEntity> atendimentos = repository.findByPaciente_Id(Math.toIntExact(pacienteId)).stream()
+                    .filter(a -> "CONCLUIDO".equalsIgnoreCase(a.getStatus()))
+                    .sorted(Comparator.comparing(AtendimentoEntity::getDataHoraInicio))
+                    .collect(Collectors.toList());
+
+            // Cabeçalho: nome e data nascimento (mesmo que não haja atendimentos)
+            String nome = paciente != null ? paciente.getNome() : "-";
+            String dataNasc = paciente != null && paciente.getDataNascimento() != null ?
+                    paciente.getDataNascimento().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "-";
+
+            Paragraph cabecalho = new Paragraph(nome + " - Nasc.: " + dataNasc, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14));
+            cabecalho.setAlignment(Element.ALIGN_LEFT);
+            document.add(cabecalho);
+            document.add(Chunk.NEWLINE);
+
+            if (atendimentos.isEmpty()) {
+                Paragraph vazio = new Paragraph("Prontuário - Nenhum atendimento concluído encontrado.", FontFactory.getFont(FontFactory.HELVETICA, 12));
+                vazio.setAlignment(Element.ALIGN_CENTER);
+                document.add(vazio);
+                document.close();
+                return out.toByteArray();
+            }
+
+            // Corpo: lista cronológica
+            DateTimeFormatter fmtHora = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+            for (AtendimentoEntity a : atendimentos) {
+                Paragraph p = new Paragraph();
+                p.add(new Paragraph(a.getDataHoraInicio().format(fmtHora) + " - " + (a.getServicoBase() != null ? a.getServicoBase().getNome() : "-"), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12)));
+                p.add(new Paragraph("Evolução:", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11)));
+                p.add(new Paragraph(a.getEvolucao() != null ? a.getEvolucao() : "--", FontFactory.getFont(FontFactory.HELVETICA, 11)));
+                p.add(Chunk.NEWLINE);
+                document.add(p);
+            }
+
+            document.close();
+            return out.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException("Erro ao gerar prontuário", e);
         }
     }
 

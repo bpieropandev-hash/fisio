@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "assinaturas")
@@ -39,5 +40,7 @@ public class AssinaturaEntity {
 
     @Column(name = "data_inicio", nullable = false)
     private LocalDate dataInicio;
-}
 
+    @Column(name = "data_cancelamento")
+    private LocalDateTime dataCancelamento;
+}

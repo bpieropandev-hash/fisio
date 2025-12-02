@@ -18,7 +18,7 @@ public class AtualizarServicoService implements AtualizarServicoUseCase {
     public ServicoConfig atualizar(Long id, ServicoConfig servico) {
         log.info("Atualizando serviço - ID: {}", id);
         var existenteOpt = servicoRepositoryPort.buscarPorId(id);
-        var existente = existenteOpt.orElseThrow(() -> new IllegalArgumentException("Serviço não encontrado: " + id));
+        var existente = existenteOpt.orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Serviço não encontrado: " + id));
 
         if (servico.getNome() != null && !servico.getNome().equals(existente.getNome())) {
             var porNome = servicoRepositoryPort.buscarPorNome(servico.getNome());
@@ -38,4 +38,3 @@ public class AtualizarServicoService implements AtualizarServicoUseCase {
         return salvo;
     }
 }
-

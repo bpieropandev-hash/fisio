@@ -47,10 +47,10 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
 
         // Validações iniciais (comuns para único e recorrente)
         Paciente paciente = pacienteRepositoryPort.buscarPorId(pacienteId)
-                .orElseThrow(() -> new IllegalArgumentException("Paciente não encontrado ou inativo: " + pacienteId));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Paciente não encontrado ou inativo: " + pacienteId));
 
         ServicoConfig servico = servicoRepositoryPort.buscarPorIdEAtivo(servicoId)
-                .orElseThrow(() -> new IllegalArgumentException("Serviço não encontrado ou inativo: " + servicoId));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Serviço não encontrado ou inativo: " + servicoId));
 
         // Cenário A: Agendamento Único
         if (dataFimRecorrencia == null) {

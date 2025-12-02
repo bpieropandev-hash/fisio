@@ -18,7 +18,7 @@ public class AtualizarPacienteService implements AtualizarPacienteUseCase {
     public Paciente atualizar(Long id, Paciente paciente) {
         log.info("Atualizando paciente - ID: {}", id);
         var existenteOpt = pacienteRepositoryPort.buscarPorId(id);
-        var existente = existenteOpt.orElseThrow(() -> new IllegalArgumentException("Paciente não encontrado: " + id));
+        var existente = existenteOpt.orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Paciente não encontrado: " + id));
 
         if (paciente.getNome() != null) existente.setNome(paciente.getNome());
         if (paciente.getCpf() != null) existente.setCpf(paciente.getCpf());

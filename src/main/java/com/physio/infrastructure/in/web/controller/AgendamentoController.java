@@ -114,7 +114,7 @@ public class AgendamentoController {
     @GetMapping("/{id}")
     public ResponseEntity<AtendimentoResponseDTO> buscarPorId(@Parameter(description = "ID do atendimento", example = "1") @PathVariable Long id) {
         var opt = buscarAtendimentoUseCase.buscarPorId(id);
-        var atendimento = opt.orElseThrow(() -> new IllegalArgumentException("Atendimento não encontrado: " + id));
+        var atendimento = opt.orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Atendimento não encontrado: " + id));
         var dto = AtendimentoResponseDTO.builder()
                 .id(atendimento.getId())
                 .pacienteId(atendimento.getPaciente().getId())

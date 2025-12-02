@@ -80,7 +80,7 @@ public class CobrancaController {
             @Parameter(description = "ID da cobrança", example = "1")
             @PathVariable Long id) {
         CobrancaMensal cobranca = cobrancaMensalRepositoryPort.buscarPorId(id)
-                .orElseThrow(() -> new IllegalArgumentException("Cobrança não encontrada: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cobrança não encontrada: " + id));
 
         CobrancaMensalResponseDTO dto = CobrancaMensalResponseDTO.builder()
                 .id(cobranca.getId())
@@ -128,4 +128,3 @@ public class CobrancaController {
         return ResponseEntity.ok(dtos);
     }
 }
-

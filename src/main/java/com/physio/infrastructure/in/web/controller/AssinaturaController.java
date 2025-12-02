@@ -3,6 +3,7 @@ package com.physio.infrastructure.in.web.controller;
 import com.physio.domain.model.Assinatura;
 import com.physio.domain.ports.in.BuscarAssinaturaUseCase;
 import com.physio.domain.ports.in.CriarAssinaturaUseCase;
+import com.physio.domain.ports.in.CancelarAssinaturaUseCase;
 import com.physio.infrastructure.in.web.dto.AssinaturaCreateRequestDTO;
 import com.physio.infrastructure.in.web.dto.AssinaturaResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,6 +30,7 @@ public class AssinaturaController {
 
     private final CriarAssinaturaUseCase criarAssinaturaUseCase;
     private final BuscarAssinaturaUseCase buscarAssinaturaUseCase;
+    private final CancelarAssinaturaUseCase cancelarAssinaturaUseCase;
 
     @Operation(summary = "Criar assinatura", description = "Cria uma nova assinatura mensal para um paciente e serviço")
     @ApiResponses({
@@ -95,7 +97,7 @@ public class AssinaturaController {
             @Parameter(description = "ID da assinatura", example = "1")
             @PathVariable Long id) {
         Assinatura assinatura = buscarAssinaturaUseCase.buscarPorId(id)
-                .orElseThrow(() -> new IllegalArgumentException("Assinatura não encontrada: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Assinatura não encontrada: " + id));
 
         AssinaturaResponseDTO dto = AssinaturaResponseDTO.builder()
                 .id(assinatura.getId())
@@ -134,5 +136,14 @@ public class AssinaturaController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
     }
-}
 
+    @Operation(summary = "Cancelar assinatura")
+    @ApiResponses({@ApiResponse(responseCode = "204", description = "Assinatura cancelada"),
+            @ApiResponse(responseCode = "404", description = "Assinatura não encontrada")})
+    @PutMapping("/{id}/cancelar")
+    public ResponseEntity<Void> cancelarAssinatura(
+            @Parameter(description = "ID da assinatura") @PathVariable Long id) {
+        cancelarAssinaturaUseCase.cancelar(id);
+        return ResponseEntity.noContent().build();
+    }
+}

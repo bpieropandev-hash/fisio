@@ -51,4 +51,24 @@ public class RelatorioController {
                 .body(pdfBytes);
     }
 
+    @Operation(summary = "Prontuário do paciente",
+            description = "Gera PDF com o histórico clínico (atendimentos concluídos) do paciente")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "PDF gerado com sucesso",
+                    content = @Content(mediaType = "application/pdf")),
+            @ApiResponse(responseCode = "404", description = "Paciente não encontrado")
+    })
+    @GetMapping("/prontuario/{pacienteId}")
+    public ResponseEntity<byte[]> baixarProntuario(
+            @Parameter(description = "ID do paciente", example = "1") @PathVariable Long pacienteId) {
+
+        byte[] pdfBytes = relatorioService.gerarProntuario(pacienteId);
+        String fileName = "prontuario_" + pacienteId + ".pdf";
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName)
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdfBytes);
+    }
+
 }

@@ -106,7 +106,7 @@ public class PacienteController {
     @GetMapping("/{id}")
     public ResponseEntity<PacienteResponseDTO> buscarPorId(@Parameter(description = "ID do paciente", example = "1") @PathVariable Long id) {
         var opt = buscarPacienteUseCase.buscarPorId(id);
-        var paciente = opt.orElseThrow(() -> new IllegalArgumentException("Paciente não encontrado: " + id));
+        var paciente = opt.orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Paciente não encontrado: " + id));
         var dto = PacienteResponseDTO.builder()
                 .id(paciente.getId())
                 .nome(paciente.getNome())

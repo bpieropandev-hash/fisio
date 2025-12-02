@@ -26,7 +26,7 @@ public class AtualizarCobrancaService implements AtualizarCobrancaUseCase {
         log.info("Atualizando cobrança - ID: {}, Status: {}", cobrancaId, status);
 
         CobrancaMensal cobranca = cobrancaMensalRepositoryPort.buscarPorId(cobrancaId)
-                .orElseThrow(() -> new IllegalArgumentException("Cobrança não encontrada: " + cobrancaId));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cobrança não encontrada: " + cobrancaId));
 
         // Atualizar campos
         cobranca.setStatus(status);
@@ -51,4 +51,3 @@ public class AtualizarCobrancaService implements AtualizarCobrancaUseCase {
         return cobrancaAtualizada;
     }
 }
-

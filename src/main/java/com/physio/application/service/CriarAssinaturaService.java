@@ -32,7 +32,7 @@ public class CriarAssinaturaService implements CriarAssinaturaUseCase {
 
         // Validação: Verificar se o paciente existe e está ativo
         Paciente paciente = pacienteRepositoryPort.buscarPorId(pacienteId)
-                .orElseThrow(() -> new IllegalArgumentException("Paciente não encontrado: " + pacienteId));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Paciente não encontrado: " + pacienteId));
 
         if (paciente.getAtivo() == null || !paciente.getAtivo()) {
             throw new IllegalArgumentException("Paciente não está ativo: " + pacienteId);
@@ -40,7 +40,7 @@ public class CriarAssinaturaService implements CriarAssinaturaUseCase {
 
         // Validação: Verificar se o serviço existe e está ativo
         ServicoConfig servico = servicoRepositoryPort.buscarPorIdEAtivo(servicoId)
-                .orElseThrow(() -> new IllegalArgumentException("Serviço não encontrado ou inativo: " + servicoId));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Serviço não encontrado ou inativo: " + servicoId));
 
         // Validação: Verificar se já existe assinatura ativa para este paciente e serviço
         boolean jaExiste = assinaturaRepositoryPort
@@ -73,4 +73,3 @@ public class CriarAssinaturaService implements CriarAssinaturaUseCase {
         return assinaturaSalva;
     }
 }
-

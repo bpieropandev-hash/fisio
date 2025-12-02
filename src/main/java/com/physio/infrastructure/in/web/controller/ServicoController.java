@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.Parameter;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -85,7 +86,7 @@ public class ServicoController {
     @GetMapping("/{id}")
     public ResponseEntity<ServicoResponseDTO> buscarPorId(@Parameter(description = "ID do serviço", example = "1") @PathVariable Long id) {
         var opt = buscarServicoUseCase.buscarPorId(id);
-        var servico = opt.orElseThrow(() -> new IllegalArgumentException("Serviço não encontrado: " + id));
+        var servico = opt.orElseThrow(() -> new EntityNotFoundException("Serviço não encontrado: " + id));
         var dto = ServicoResponseDTO.builder()
                 .id(servico.getId())
                 .nome(servico.getNome())
