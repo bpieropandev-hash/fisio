@@ -17,9 +17,9 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AgendamentoRequestDTO {
-    @NotNull(message = "ID do paciente é obrigatório")
-    @Schema(example = "1")
-    private Long pacienteId;
+    @NotNull(message = "A lista de IDs de pacientes é obrigatória")
+    @Schema(example = "[1, 2, 3]")
+    private List<Long> pacienteIds;
 
     @NotNull(message = "ID do serviço é obrigatório")
     @Schema(example = "2")

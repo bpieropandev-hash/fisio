@@ -50,18 +50,20 @@ public class AgendamentoController {
             @Valid @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Dados necessários para criar um agendamento (único ou recorrente)") 
             @RequestBody AgendamentoRequestDTO request) {
 
-        log.info("Recebendo requisição de agendamento - Paciente: {}, Serviço: {}, Data/Hora: {}, Recorrente: {}",
-                request.getPacienteId(), request.getServicoId(), request.getDataHora(), 
+        log.info("Recebendo requisição de agendamento - Pacientes: {}, Serviço: {}, Data/Hora: {}, Recorrente: {}",
+                request.getPacienteIds(), request.getServicoId(), request.getDataHora(),
                 request.getDataFimRecorrencia() != null);
 
         // Chamar o use case (agora sempre retorna lista)
-        var atendimentos = realizarAgendamentoUseCase.realizarAgendamento(
-                request.getPacienteId(),
-                request.getServicoId(),
-                request.getDataHora(),
-                request.getDataFimRecorrencia(),
-                request.getDiasSemana()
-        );
+        var atendimentos = request.getPacienteIds().stream()
+                .flatMap(pacienteId -> realizarAgendamentoUseCase.realizarAgendamento(
+                        pacienteId,
+                        request.getServicoId(),
+                        request.getDataHora(),
+                        request.getDataFimRecorrencia(),
+                        request.getDiasSemana()
+                ).stream())
+                .toList();
 
         // Converter para DTOs
         var dtos = atendimentos.stream()
