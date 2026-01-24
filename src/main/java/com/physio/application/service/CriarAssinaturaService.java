@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -26,50 +28,56 @@ public class CriarAssinaturaService implements CriarAssinaturaUseCase {
 
     @Override
     @Transactional
-    public Assinatura criarAssinatura(Long pacienteId, Long servicoId, BigDecimal valorMensal, Integer diaVencimento, LocalDate dataInicio) {
-        log.info("Criando assinatura - Paciente: {}, Serviço: {}, Valor: R$ {}, Dia Vencimento: {}", 
-                pacienteId, servicoId, valorMensal, diaVencimento);
+    public List<Assinatura> criarAssinatura(List<Long> pacienteIds, Long servicoId, BigDecimal valorMensal, Integer diaVencimento, LocalDate dataInicio) {
+        log.info("Criando assinaturas - Pacientes: {}, Serviço: {}, Valor: R$ {}, Dia Vencimento: {}",
+                pacienteIds, servicoId, valorMensal, diaVencimento);
 
-        // Validação: Verificar se o paciente existe e está ativo
-        Paciente paciente = pacienteRepositoryPort.buscarPorId(pacienteId)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Paciente não encontrado: " + pacienteId));
-
-        if (paciente.getAtivo() == null || !paciente.getAtivo()) {
-            throw new IllegalArgumentException("Paciente não está ativo: " + pacienteId);
-        }
-
-        // Validação: Verificar se o serviço existe e está ativo
+        // Validação: Verificar se o serviço existe e está ativo (uma vez para todos)
         ServicoConfig servico = servicoRepositoryPort.buscarPorIdEAtivo(servicoId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Serviço não encontrado ou inativo: " + servicoId));
-
-        // Validação: Verificar se já existe assinatura ativa para este paciente e serviço
-        boolean jaExiste = assinaturaRepositoryPort
-                .buscarAtivaPorPacienteEServico(pacienteId, servicoId)
-                .isPresent();
-
-        if (jaExiste) {
-            throw new IllegalArgumentException("Já existe uma assinatura ativa para este paciente e serviço");
-        }
 
         // Validação: Dia de vencimento deve estar entre 1 e 28
         if (diaVencimento < 1 || diaVencimento > 28) {
             throw new IllegalArgumentException("Dia de vencimento deve estar entre 1 e 28");
         }
 
-        // Criar nova assinatura
-        Assinatura assinatura = Assinatura.builder()
-                .paciente(paciente)
-                .servico(servico)
-                .valorMensal(valorMensal)
-                .diaVencimento(diaVencimento)
-                .ativo(true)
-                .dataInicio(dataInicio != null ? dataInicio : LocalDate.now())
-                .build();
+        List<Assinatura> created = new ArrayList<>();
 
-        // Salvar assinatura
-        Assinatura assinaturaSalva = assinaturaRepositoryPort.salvar(assinatura);
+        for (Long pacienteId : pacienteIds) {
+            // Validação: Verificar se o paciente existe e está ativo
+            Paciente paciente = pacienteRepositoryPort.buscarPorId(pacienteId)
+                    .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Paciente não encontrado: " + pacienteId));
 
-        log.info("Assinatura criada com sucesso - ID: {}", assinaturaSalva.getId());
-        return assinaturaSalva;
+            if (paciente.getAtivo() == null || !paciente.getAtivo()) {
+                throw new IllegalArgumentException("Paciente não está ativo: " + pacienteId);
+            }
+
+            // Validação: Verificar se já existe assinatura ativa para este paciente e serviço
+            boolean jaExiste = assinaturaRepositoryPort
+                    .buscarAtivaPorPacienteEServico(pacienteId, servicoId)
+                    .isPresent();
+
+            if (jaExiste) {
+                throw new IllegalArgumentException("Já existe uma assinatura ativa para o paciente " + pacienteId + " e serviço " + servicoId);
+            }
+
+            // Criar nova assinatura
+            Assinatura assinatura = Assinatura.builder()
+                    .paciente(paciente)
+                    .servico(servico)
+                    .valorMensal(valorMensal)
+                    .diaVencimento(diaVencimento)
+                    .ativo(true)
+                    .dataInicio(dataInicio != null ? dataInicio : LocalDate.now())
+                    .build();
+
+            // Salvar assinatura
+            Assinatura assinaturaSalva = assinaturaRepositoryPort.salvar(assinatura);
+            created.add(assinaturaSalva);
+
+            log.info("Assinatura criada com sucesso - ID: {} (Paciente: {})", assinaturaSalva.getId(), pacienteId);
+        }
+
+        return created;
     }
 }

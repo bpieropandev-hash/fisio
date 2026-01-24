@@ -23,7 +23,8 @@ public interface RealizarAgendamentoUseCase {
             Long servicoId,
             LocalDateTime dataHora,
             LocalDate dataFimRecorrencia,
-            List<Integer> diasSemana
+            List<Integer> diasSemana,
+            Integer quantidade
     );
 }
 

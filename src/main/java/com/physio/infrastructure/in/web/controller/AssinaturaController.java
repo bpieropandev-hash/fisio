@@ -32,38 +32,40 @@ public class AssinaturaController {
     private final BuscarAssinaturaUseCase buscarAssinaturaUseCase;
     private final CancelarAssinaturaUseCase cancelarAssinaturaUseCase;
 
-    @Operation(summary = "Criar assinatura", description = "Cria uma nova assinatura mensal para um paciente e serviço")
+    @Operation(summary = "Criar assinaturas", description = "Cria novas assinaturas mensais para um ou mais pacientes e um serviço")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Assinatura criada com sucesso"),
             @ApiResponse(responseCode = "400", description = "Dados inválidos ou já existe assinatura ativa")
     })
     @PostMapping
-    public ResponseEntity<AssinaturaResponseDTO> criarAssinatura(
+    public ResponseEntity<List<AssinaturaResponseDTO>> criarAssinatura(
             @Valid @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Dados da assinatura")
             @RequestBody AssinaturaCreateRequestDTO request) {
-        log.info("Criando assinatura - Paciente: {}, Serviço: {}", request.getPacienteId(), request.getServicoId());
+        log.info("Criando assinaturas - Pacientes: {}, Serviço: {}", request.getPacienteIds(), request.getServicoId());
 
-        Assinatura assinatura = criarAssinaturaUseCase.criarAssinatura(
-                request.getPacienteId(),
+        List<Assinatura> assinaturas = criarAssinaturaUseCase.criarAssinatura(
+                request.getPacienteIds(),
                 request.getServicoId(),
                 request.getValorMensal(),
                 request.getDiaVencimento(),
                 request.getDataInicio()
         );
 
-        AssinaturaResponseDTO response = AssinaturaResponseDTO.builder()
-                .id(assinatura.getId())
-                .pacienteId(assinatura.getPaciente().getId())
-                .pacienteNome(assinatura.getPaciente().getNome())
-                .servicoId(assinatura.getServico().getId())
-                .servicoNome(assinatura.getServico().getNome())
-                .valorMensal(assinatura.getValorMensal())
-                .diaVencimento(assinatura.getDiaVencimento())
-                .ativo(assinatura.getAtivo())
-                .dataInicio(assinatura.getDataInicio())
-                .build();
+        List<AssinaturaResponseDTO> responses = assinaturas.stream()
+                .map(assinatura -> AssinaturaResponseDTO.builder()
+                        .id(assinatura.getId())
+                        .pacienteId(assinatura.getPaciente().getId())
+                        .pacienteNome(assinatura.getPaciente().getNome())
+                        .servicoId(assinatura.getServico().getId())
+                        .servicoNome(assinatura.getServico().getNome())
+                        .valorMensal(assinatura.getValorMensal())
+                        .diaVencimento(assinatura.getDiaVencimento())
+                        .ativo(assinatura.getAtivo())
+                        .dataInicio(assinatura.getDataInicio())
+                        .build())
+                .collect(Collectors.toList());
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(responses);
     }
 
     @Operation(summary = "Listar todas as assinaturas")

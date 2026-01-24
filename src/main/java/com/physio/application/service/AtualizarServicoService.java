@@ -32,6 +32,7 @@ public class AtualizarServicoService implements AtualizarServicoUseCase {
         if (servico.getPctClinica() != null) existente.setPctClinica(servico.getPctClinica());
         if (servico.getPctProfissional() != null) existente.setPctProfissional(servico.getPctProfissional());
         if (servico.getAtivo() != null) existente.setAtivo(servico.getAtivo());
+        if (servico.getTipo() != null) existente.setTipo(servico.getTipo());
 
         var salvo = servicoRepositoryPort.salvar(existente);
         log.info("Serviço atualizado - ID: {}", salvo.getId());

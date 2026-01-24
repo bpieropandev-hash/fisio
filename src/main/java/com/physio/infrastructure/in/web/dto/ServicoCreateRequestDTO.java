@@ -10,6 +10,8 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import com.physio.domain.model.TipoServico;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -30,6 +32,10 @@ public class ServicoCreateRequestDTO {
     @NotNull
     @Schema(description = "% destinado ao profissional", example = "80.00")
     private BigDecimal pctProfissional;
+
+    @NotNull
+    @Schema(description = "Tipo do serviço", example = "FISIOTERAPIA", allowableValues = {"FISIOTERAPIA","PILATES"})
+    private TipoServico tipo;
 
     private Boolean ativo;
 }

@@ -4,8 +4,8 @@ import com.physio.domain.model.Assinatura;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 public interface CriarAssinaturaUseCase {
-    Assinatura criarAssinatura(Long pacienteId, Long servicoId, BigDecimal valorMensal, Integer diaVencimento, LocalDate dataInicio);
+    List<Assinatura> criarAssinatura(List<Long> pacienteIds, Long servicoId, BigDecimal valorMensal, Integer diaVencimento, LocalDate dataInicio);
 }
-

@@ -34,5 +34,8 @@ public class ServicoConfigEntity {
 
     @Column(nullable = false)
     private Boolean ativo;
+    // Novo campo: tipo do serviço (FISIOTERAPIA ou PILATES)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo", length = 20, nullable = false)
+    private com.physio.domain.model.TipoServico tipo;
 }
-

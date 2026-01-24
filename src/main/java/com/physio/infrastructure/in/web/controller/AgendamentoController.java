@@ -61,7 +61,8 @@ public class AgendamentoController {
                         request.getServicoId(),
                         request.getDataHora(),
                         request.getDataFimRecorrencia(),
-                        request.getDiasSemana()
+                        request.getDiasSemana(),
+                        request.getPacienteIds().size()
                 ).stream())
                 .toList();
 

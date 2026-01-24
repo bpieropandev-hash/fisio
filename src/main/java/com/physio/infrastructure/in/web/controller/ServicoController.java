@@ -49,6 +49,7 @@ public class ServicoController {
                 .pctClinica(request.getPctClinica())
                 .pctProfissional(request.getPctProfissional())
                 .ativo(request.getAtivo())
+                .tipo(request.getTipo())
                 .build();
 
         ServicoConfig salvo = criarServicoUseCase.criarServico(domain);
@@ -60,6 +61,7 @@ public class ServicoController {
                 .pctClinica(salvo.getPctClinica())
                 .pctProfissional(salvo.getPctProfissional())
                 .ativo(salvo.getAtivo())
+                .tipo(salvo.getTipo())
                 .build();
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -77,6 +79,7 @@ public class ServicoController {
                 .pctClinica(s.getPctClinica())
                 .pctProfissional(s.getPctProfissional())
                 .ativo(s.getAtivo())
+                .tipo(s.getTipo())
                 .build()).toList();
         return ResponseEntity.ok(dtoList);
     }
@@ -94,6 +97,7 @@ public class ServicoController {
                 .pctClinica(servico.getPctClinica())
                 .pctProfissional(servico.getPctProfissional())
                 .ativo(servico.getAtivo())
+                .tipo(servico.getTipo())
                 .build();
         return ResponseEntity.ok(dto);
     }
@@ -108,6 +112,7 @@ public class ServicoController {
                 .pctClinica(request.getPctClinica())
                 .pctProfissional(request.getPctProfissional())
                 .ativo(request.getAtivo())
+                .tipo(request.getTipo())
                 .build();
 
         var atualizado = atualizarServicoUseCase.atualizar(id, domain);
@@ -118,6 +123,7 @@ public class ServicoController {
                 .pctClinica(atualizado.getPctClinica())
                 .pctProfissional(atualizado.getPctProfissional())
                 .ativo(atualizado.getAtivo())
+                .tipo(atualizado.getTipo())
                 .build();
         return ResponseEntity.ok(dto);
     }

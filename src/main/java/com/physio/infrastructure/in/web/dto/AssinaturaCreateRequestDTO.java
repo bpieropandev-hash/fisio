@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,15 +12,17 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class AssinaturaCreateRequestDTO {
-    @NotNull(message = "ID do paciente é obrigatório")
-    @Schema(example = "1")
-    private Long pacienteId;
+    @NotNull(message = "IDs dos pacientes são obrigatórios")
+    @NotEmpty(message = "Deve haver ao menos um paciente")
+    @Schema(description = "Lista de IDs dos pacientes", example = "[1, 2]")
+    private List<Long> pacienteIds;
 
     @NotNull(message = "ID do serviço é obrigatório")
     @Schema(example = "2")
@@ -39,4 +42,3 @@ public class AssinaturaCreateRequestDTO {
     @Schema(description = "Data de início da assinatura (opcional, padrão: hoje)", example = "2025-01-01")
     private LocalDate dataInicio;
 }
-

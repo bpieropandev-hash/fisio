@@ -1,5 +1,6 @@
 package com.physio.infrastructure.in.web.dto;
 
+import com.physio.domain.model.TipoServico;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,4 +22,5 @@ public class ServicoResponseDTO {
     private BigDecimal pctClinica;
     private BigDecimal pctProfissional;
     private Boolean ativo;
+    private TipoServico tipo;
 }

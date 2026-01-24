@@ -3,6 +3,7 @@ package com.physio.application.service;
 import com.physio.domain.model.Atendimento;
 import com.physio.domain.model.Paciente;
 import com.physio.domain.model.ServicoConfig;
+import com.physio.domain.model.TipoServico;
 import com.physio.domain.ports.in.RealizarAgendamentoUseCase;
 import com.physio.domain.ports.out.AssinaturaRepositoryPort;
 import com.physio.domain.ports.out.AtendimentoRepositoryPort;
@@ -20,7 +21,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 @Slf4j
@@ -32,6 +32,8 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
     private final PacienteRepositoryPort pacienteRepositoryPort;
     private final ServicoRepositoryPort servicoRepositoryPort;
     private final AssinaturaRepositoryPort assinaturaRepositoryPort;
+    private final int limitePilates = 5;
+    private final int limiteFisioterapia = 1;
 
     @Override
     @Transactional
@@ -40,7 +42,7 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
             Long servicoId,
             LocalDateTime dataHora,
             LocalDate dataFimRecorrencia,
-            List<Integer> diasSemana) {
+            List<Integer> diasSemana, Integer countPacientes) {
 
         log.info("Iniciando agendamento - Paciente: {}, Serviço: {}, Data/Hora: {}, Recorrente: {}",
                 pacienteId, servicoId, dataHora, dataFimRecorrencia != null);
@@ -54,13 +56,14 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
 
         // Cenário A: Agendamento Único
         if (dataFimRecorrencia == null) {
+            validarQuantidadePacientes(dataHora, servico, countPacientes);
             Atendimento atendimento = criarUnico(paciente, servico, pacienteId, servicoId, dataHora);
             return List.of(atendimento);
         }
 
         // Cenário B: Agendamento Recorrente
         if (dataFimRecorrencia.isBefore(dataHora.toLocalDate())) {
-            throw new IllegalArgumentException("dataFimRecorrencia deve ser posterior ou igual à data de início");
+            throw new IllegalArgumentException("dataFimRecorrência deve ser posterior ou igual à data de início");
         }
 
         // Determinar dias da semana para repetir
@@ -84,7 +87,7 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
             try {
                 // Manter o mesmo horário da data inicial
                 LocalDateTime dataHoraAgendamento = data.atTime(dataHora.toLocalTime());
-
+                validarQuantidadePacientes(dataHoraAgendamento, servico, countPacientes);
                 Atendimento atendimento = criarUnico(paciente, servico, pacienteId, servicoId, dataHoraAgendamento);
                 atendimentosCriados.add(atendimento);
                 sucessos++;
@@ -93,11 +96,11 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
                 // Captura exceções de validação (conflito de horário, etc.)
                 falhas++;
                 log.warn("Falha ao criar agendamento para data {}: {}", data, e.getMessage());
-                // Continua tentando criar os demais agendamentos
+                // Continua a tentar criar os demais agendamentos
             } catch (Exception e) {
                 falhas++;
                 log.error("Erro inesperado ao criar agendamento para data {}: {}", data, e.getMessage(), e);
-                // Continua tentando criar os demais agendamentos
+                // Continua a tentar criar os demais agendamentos
             }
         }
 
@@ -131,57 +134,16 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
                 .status("AGENDADO")
                 .build();
 
-        // Verificar conflitos de horário
-        List<Atendimento> conflitos = atendimentoRepositoryPort.listarPorPeriodo(
-                atendimento.getDataHoraInicio(), 
-                atendimento.getDataHoraFim()
-        );
+        validaTemAssinatura(servico, pacienteId, servicoId, atendimento);
 
-        // Filtrar conflitos reais: Mantemos somente os agendamentos que realmente impedem o novo.
-        // Regra: se o agendamento existente e o novo agendamento forem do mesmo serviço AND ambos os pacientes
-        // possuem assinatura ativa para esse serviço (assinatura mensal), então NÃO é considerado conflito
-        // (ex: aulas de pilates mensais podem ter mais de um aluno no mesmo horário).
-        List<Atendimento> conflitosReais = conflitos.stream()
-                .filter(existente -> {
-                    // Se o existente for null por algum motivo, considera como conflito
-                    if (existente == null || existente.getServicoBase() == null) return true;
+        // Salvar via porta de saída
+        Atendimento atendimentoSalvo = atendimentoRepositoryPort.salvar(atendimento);
 
-                    Integer existenteServicoId = existente.getServicoBase().getId();
-                    Long existenteServicoIdLong = existenteServicoId == null ? null : existenteServicoId.longValue();
+        log.debug("Agendamento único criado com sucesso - ID: {}", atendimentoSalvo.getId());
+        return atendimentoSalvo;
+    }
 
-                    // Se o serviço for diferente, continua sendo conflito
-                    if (!Objects.equals(existenteServicoIdLong, servicoId)) return true;
-
-                    // Ambos são do mesmo serviço - verifica assinaturas ativas
-                    Integer existentePacienteIdInt = existente.getPaciente() == null ? null : existente.getPaciente().getId();
-                    Long existentePacienteId = existentePacienteIdInt == null ? null : existentePacienteIdInt.longValue();
-
-                    boolean existenteTemAssinatura = existentePacienteId != null && assinaturaRepositoryPort
-                            .buscarAtivaPorPacienteEServico(existentePacienteId, servicoId)
-                            .isPresent();
-
-                    boolean novoPacienteTemAssinatura = assinaturaRepositoryPort
-                            .buscarAtivaPorPacienteEServico(pacienteId, servicoId)
-                            .isPresent();
-
-                    // Se ambos tiverem assinatura ativa para esse serviço, então NÃO é conflito (permite múltiplos alunos)
-                    if (existenteTemAssinatura && novoPacienteTemAssinatura) {
-                        log.debug("Conflito permitido entre pacientes assinantes para o serviço {}: existentePaciente={}, novoPaciente={}",
-                                servicoId, existentePacienteId, pacienteId);
-                        return false; // filtra-o (não é conflito real)
-                    }
-
-                    // Em qualquer outro caso, é conflito
-                    return true;
-                })
-                .toList();
-
-        if (!conflitosReais.isEmpty()) {
-            log.warn("Conflitos reais encontrados no período {} - {}: {}",
-                    atendimento.getDataHoraInicio(), atendimento.getDataHoraFim(), conflitosReais.size());
-            throw new IllegalArgumentException("Já existe um agendamento neste horário!");
-        }
-
+    private void validaTemAssinatura(ServicoConfig servico, Long pacienteId, Long servicoId, Atendimento atendimento) {
         // REGRA DE NEGÓCIO: Verificar se o paciente tem assinatura ativa para este serviço
         boolean temAssinaturaAtiva = assinaturaRepositoryPort
                 .buscarAtivaPorPacienteEServico(pacienteId, servicoId)
@@ -205,12 +167,6 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
                     atendimento.getPctClinicaSnapshot(),
                     atendimento.getPctProfissionalSnapshot());
         }
-
-        // Salvar via porta de saída
-        Atendimento atendimentoSalvo = atendimentoRepositoryPort.salvar(atendimento);
-
-        log.debug("Agendamento único criado com sucesso - ID: {}", atendimentoSalvo.getId());
-        return atendimentoSalvo;
     }
 
     /**
@@ -258,5 +214,55 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
         }
 
         return datas;
+    }
+
+    private void validarQuantidadePacientes(
+            LocalDateTime dataHora,
+            ServicoConfig servico,
+            Integer countPacientes) {
+
+        // Define duração
+        LocalDateTime dataHoraFim = servico.getNome().equals("Avaliação")
+                ? dataHora.plusMinutes(90)
+                : dataHora.plusMinutes(60);
+
+        List<Atendimento> conflitos = atendimentoRepositoryPort
+                .listarPorPeriodo(dataHora, dataHoraFim);
+
+        // Regra: não pode misturar tipos de serviço no mesmo horário
+        boolean possuiTipoDiferente = conflitos.stream()
+                .anyMatch(a -> a.getServicoBase().getTipo() != servico.getTipo());
+
+        if (possuiTipoDiferente) {
+            throw new IllegalArgumentException(
+                    "Tipo de serviço diferente de outros agendamentos no mesmo horário."
+            );
+        }
+
+        int totalNoHorario = conflitos.size() + countPacientes;
+
+        if (servico.getTipo() == TipoServico.PILATES) {
+
+            if (totalNoHorario > limitePilates) {
+                log.warn(
+                        "Capacidade máxima de {} pacientes atingida para PILATES no horário {} - total={}",
+                        limitePilates, dataHora, totalNoHorario
+                );
+                throw new IllegalArgumentException(
+                        "Capacidade máxima para PILATES neste horário atingida (5 pacientes)"
+                );
+            }
+
+        } else if (servico.getTipo() == TipoServico.FISIOTERAPIA && totalNoHorario > limiteFisioterapia) {
+
+            log.warn(
+                    "Conflito para FISIOTERAPIA no horário {} - total={}",
+                    dataHora, totalNoHorario
+            );
+            throw new IllegalArgumentException(
+                    "Já existe um agendamento neste horário!"
+            );
+
+        }
     }
 }

@@ -6,7 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
+
+import com.physio.domain.model.TipoServico;
 
 @Data
 @Builder
@@ -19,5 +20,5 @@ public class ServicoConfig {
     private BigDecimal pctClinica;
     private BigDecimal pctProfissional;
     private Boolean ativo;
+    private TipoServico tipo; // Novo campo: tipo do serviço (PILATES ou FISIOTERAPIA)
 }
-
