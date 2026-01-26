@@ -19,11 +19,6 @@ public interface AtendimentoJpaRepository extends JpaRepository<AtendimentoEntit
     // Busca para o Prontuário
     List<AtendimentoEntity> findByPaciente_Id(Integer pacienteId);
 
-    @Query("SELECT COUNT(a) > 0 FROM AtendimentoEntity a WHERE " +
-            "(a.dataHoraInicio < :fim AND a.dataHoraFim > :inicio) " +
-            "AND a.status <> 'CANCELADO'")
-    boolean existsConflitoDeHorario(LocalDateTime inicio, LocalDateTime fim);
-
     @Query("SELECT a FROM AtendimentoEntity a " +
             "WHERE a.dataHoraInicio BETWEEN :inicio AND :fim " +
             "AND a.servicoBase.id IN :servicoIds " +
@@ -52,6 +47,16 @@ public interface AtendimentoJpaRepository extends JpaRepository<AtendimentoEntit
             "AND a.dataHoraInicio >= :inicio " +
             "AND a.dataHoraInicio < :fim")
     List<AtendimentoEntity> findAvulsosConcluidosPorMes(
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fim") LocalDateTime fim
+    );
+
+    @Query("""
+        SELECT a FROM AtendimentoEntity a
+        WHERE a.dataHoraInicio < :fim
+          AND a.dataHoraFim > :inicio
+    """)
+    List<AtendimentoEntity> findConflitosPeriodo(
             @Param("inicio") LocalDateTime inicio,
             @Param("fim") LocalDateTime fim
     );

@@ -12,6 +12,5 @@ public interface AtendimentoRepositoryPort {
 
     List<Atendimento> listarPorPeriodo(LocalDateTime inicio, LocalDateTime fim);
     List<Atendimento> listarPorPaciente(Long pacienteId);
-
-    boolean existeAgendamentoNoHorario(LocalDateTime inicio, LocalDateTime fim);
+    List<Atendimento> listarConflitosPorPeriodo(LocalDateTime inicio, LocalDateTime fim);
 }

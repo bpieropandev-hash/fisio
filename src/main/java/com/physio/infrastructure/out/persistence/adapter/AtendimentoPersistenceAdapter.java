@@ -53,6 +53,17 @@ public class AtendimentoPersistenceAdapter implements AtendimentoRepositoryPort 
     }
 
     @Override
+    public List<Atendimento> listarConflitosPorPeriodo(
+            LocalDateTime inicio,
+            LocalDateTime fim) {
+
+        return jpaRepository.findConflitosPeriodo(inicio, fim)
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
+    @Override
     public List<Atendimento> listarPorPaciente(Long pacienteId) {
         return jpaRepository.findByPaciente_Id(pacienteId.intValue())
                 .stream()
@@ -60,8 +71,4 @@ public class AtendimentoPersistenceAdapter implements AtendimentoRepositoryPort 
                 .toList();
     }
 
-    @Override
-    public boolean existeAgendamentoNoHorario(LocalDateTime inicio, LocalDateTime fim) {
-        return jpaRepository.existsConflitoDeHorario(inicio, fim);
-    }
 }

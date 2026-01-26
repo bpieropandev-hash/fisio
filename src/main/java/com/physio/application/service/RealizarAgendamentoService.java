@@ -32,8 +32,8 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
     private final PacienteRepositoryPort pacienteRepositoryPort;
     private final ServicoRepositoryPort servicoRepositoryPort;
     private final AssinaturaRepositoryPort assinaturaRepositoryPort;
-    private final int limitePilates = 5;
-    private final int limiteFisioterapia = 1;
+    private static final int LIMITE_PILATES = 15;
+    private static final int LIMITE_FISIOTERAPIA = 1;
 
     @Override
     @Transactional
@@ -227,7 +227,7 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
                 : dataHora.plusMinutes(60);
 
         List<Atendimento> conflitos = atendimentoRepositoryPort
-                .listarPorPeriodo(dataHora, dataHoraFim);
+                .listarConflitosPorPeriodo(dataHora, dataHoraFim);
 
         // Regra: não pode misturar tipos de serviço no mesmo horário
         boolean possuiTipoDiferente = conflitos.stream()
@@ -243,17 +243,17 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
 
         if (servico.getTipo() == TipoServico.PILATES) {
 
-            if (totalNoHorario > limitePilates) {
+            if (totalNoHorario > LIMITE_PILATES) {
                 log.warn(
                         "Capacidade máxima de {} pacientes atingida para PILATES no horário {} - total={}",
-                        limitePilates, dataHora, totalNoHorario
+                        LIMITE_PILATES, dataHora, totalNoHorario
                 );
                 throw new IllegalArgumentException(
                         "Capacidade máxima para PILATES neste horário atingida (5 pacientes)"
                 );
             }
 
-        } else if (servico.getTipo() == TipoServico.FISIOTERAPIA && totalNoHorario > limiteFisioterapia) {
+        } else if (servico.getTipo() == TipoServico.FISIOTERAPIA && totalNoHorario > LIMITE_FISIOTERAPIA) {
 
             log.warn(
                     "Conflito para FISIOTERAPIA no horário {} - total={}",
