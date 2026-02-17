@@ -19,12 +19,16 @@ public class DashboardStatsDTO {
     @Schema(description = "Total de atendimentos concluídos no mês", example = "45")
     private Long totalAtendimentos;
     
-    @Schema(description = "Faturamento líquido da profissional (valor que ela tem direito)", example = "12500.50")
+    @Schema(description = "Total de atendimentos AVULSOS concluídos com pagamento pendente (PAYMENT_PENDING). " +
+            "Não inclui atendimentos com assinatura, pois o pagamento é via mensalidade.", example = "5")
+    private Long atendimentosPagamentoPendente;
+    
+    @Schema(description = "Faturamento líquido da profissional (valor que ela tem direito) - apenas atendimentos PAID", example = "12500.50")
     private BigDecimal faturamentoProfissional;
     
-    @Schema(description = "Lista de nomes dos pacientes inadimplentes (cobranças pendentes)", 
-            example = "[\"João Silva\", \"Maria Santos\"]")
-    private List<String> alertasPendencia;
+    @Schema(description = "Lista de pendências de pagamento com tipo (ASSINATURA ou ATENDIMENTO_AVULSO)", 
+            example = "[{\"nomePaciente\": \"João Silva\", \"tipoPendencia\": \"ATENDIMENTO_AVULSO\", \"descricao\": \"Atendimento concluído em 02/02/2026 - Pagamento pendente\"}]")
+    private List<PendenciaDTO> alertasPendencia;
 }
 
 

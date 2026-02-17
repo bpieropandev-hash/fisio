@@ -26,6 +26,7 @@ public class Atendimento {
     private String evolucao;
     private Recebedor recebedor;
     private TipoPagamento tipoPagamento;
+    private String statusPagamento;
     
     // Método de negócio para criar snapshot financeiro
     public void criarSnapshotFinanceiro(ServicoConfig servico) {
