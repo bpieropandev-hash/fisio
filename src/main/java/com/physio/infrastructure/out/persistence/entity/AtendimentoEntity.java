@@ -59,6 +59,9 @@ public class AtendimentoEntity {
     @Column(name = "tipo_pagamento", length = 25)
     private TipoPagamento tipoPagamento;
 
+    @Column(name = "status_pagamento", length = 20, nullable = false)
+    private String statusPagamento;
+
     public PacienteEntity getPaciente() {
         return paciente;
     }

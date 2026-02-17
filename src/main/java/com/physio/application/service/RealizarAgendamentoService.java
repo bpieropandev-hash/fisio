@@ -132,6 +132,7 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
                 .dataHoraInicio(dataHora)
                 .dataHoraFim(servico.getNome().equals("Avaliação") ? dataHora.plusMinutes(90) : dataHora.plusMinutes(60))
                 .status("AGENDADO")
+                .statusPagamento("PAYMENT_PENDING") // Novo atendimento sempre inicia com pagamento pendente
                 .build();
 
         validaTemAssinatura(servico, pacienteId, servicoId, atendimento);
@@ -151,10 +152,14 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
 
         if (temAssinaturaAtiva) {
             // Se tem assinatura ativa, o atendimento não deve ser cobrado (valor = 0)
-            // A cobrança será feita via mensalidade
+            // A cobrança será feita via mensalidade no fim do mês
+            // Para atendimentos com assinatura, não há necessidade de recebedor/tipoPagamento
+            // O statusPagamento permanece PAYMENT_PENDING porque o pagamento será via CobrancaMensal
             atendimento.setValorCobrado(BigDecimal.ZERO);
             atendimento.setPctClinicaSnapshot(BigDecimal.ZERO);
             atendimento.setPctProfissionalSnapshot(BigDecimal.ZERO);
+            // Manter PAYMENT_PENDING - o pagamento será processado via mensalidade
+            atendimento.setStatusPagamento("PAYMENT_PENDING");
 
             log.debug("Paciente possui assinatura ativa para este serviço. Atendimento será gratuito (cobrança via mensalidade)");
         } else {

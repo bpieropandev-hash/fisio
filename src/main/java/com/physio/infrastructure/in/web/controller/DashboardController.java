@@ -25,7 +25,8 @@ public class DashboardController {
     @Operation(
             summary = "Obter resumo do dashboard",
             description = "Retorna estatísticas do mês atual: total de atendimentos concluídos, " +
-                         "faturamento líquido da profissional e lista de pacientes inadimplentes"
+                         "atendimentos avulsos com pagamento pendente, faturamento líquido da profissional " +
+                         "(apenas atendimentos PAID) e lista de pendências com tipo (ASSINATURA ou ATENDIMENTO_AVULSO)"
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Estatísticas retornadas com sucesso")
@@ -36,8 +37,9 @@ public class DashboardController {
 
         DashboardStatsDTO resumo = dashboardService.obterResumoMensal();
 
-        log.info("Resumo do dashboard gerado - Atendimentos: {}, Faturamento: R$ {}, Pendências: {}",
+        log.info("Resumo do dashboard gerado - Atendimentos: {}, Pagamento Pendente: {}, Faturamento: R$ {}, Pendências: {}",
                 resumo.getTotalAtendimentos(),
+                resumo.getAtendimentosPagamentoPendente(),
                 resumo.getFaturamentoProfissional(),
                 resumo.getAlertasPendencia().size());
 

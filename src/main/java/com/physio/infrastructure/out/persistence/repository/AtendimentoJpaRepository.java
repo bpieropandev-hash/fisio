@@ -51,6 +51,23 @@ public interface AtendimentoJpaRepository extends JpaRepository<AtendimentoEntit
             @Param("fim") LocalDateTime fim
     );
 
+    // Buscar atendimentos concluídos com pagamento pendente no mês
+    // IMPORTANTE: Considera apenas atendimentos AVULSOS (valorCobrado > 0)
+    // Atendimentos com assinatura (valorCobrado = 0) não são contados aqui pois
+    // o pagamento é feito via mensalidade (CobrancaMensal)
+    // Usa UPPER e TRIM para garantir comparação correta mesmo com espaços ou case diferente
+    @Query("SELECT COUNT(a) FROM AtendimentoEntity a " +
+            "WHERE a.status = 'CONCLUIDO' " +
+            "AND (UPPER(TRIM(COALESCE(a.statusPagamento, ''))) = 'PAYMENT_PENDING' " +
+            "     OR a.statusPagamento IS NULL) " +
+            "AND a.valorCobrado > 0 " +
+            "AND a.dataHoraInicio >= :inicio " +
+            "AND a.dataHoraInicio < :fim")
+    Long countConcluidosComPagamentoPendentePorMes(
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fim") LocalDateTime fim
+    );
+
     @Query("""
         SELECT a FROM AtendimentoEntity a
         WHERE a.dataHoraInicio < :fim
@@ -60,4 +77,18 @@ public interface AtendimentoJpaRepository extends JpaRepository<AtendimentoEntit
             @Param("inicio") LocalDateTime inicio,
             @Param("fim") LocalDateTime fim
     );
+
+    // Buscar atendimentos concluídos com pagamento pendente (todos, sem filtro de mês)
+    // IMPORTANTE: Considera apenas atendimentos AVULSOS (valorCobrado > 0)
+    // Atendimentos com assinatura (valorCobrado = 0) não são incluídos pois
+    // o pagamento é feito via mensalidade (CobrancaMensal)
+    // Usa JOIN FETCH para carregar o paciente (LAZY) e evitar LazyInitializationException
+    @Query("SELECT DISTINCT a FROM AtendimentoEntity a " +
+            "JOIN FETCH a.paciente p " +
+            "WHERE a.status = 'CONCLUIDO' " +
+            "AND (UPPER(TRIM(COALESCE(a.statusPagamento, ''))) = 'PAYMENT_PENDING' " +
+            "     OR a.statusPagamento IS NULL) " +
+            "AND a.valorCobrado > 0 " +
+            "ORDER BY a.dataHoraInicio DESC")
+    List<AtendimentoEntity> findConcluidosComPagamentoPendente();
 }
