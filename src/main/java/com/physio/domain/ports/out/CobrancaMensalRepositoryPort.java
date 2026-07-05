@@ -19,5 +19,8 @@ public interface CobrancaMensalRepositoryPort {
     
     // Buscar cobranças de uma assinatura
     List<CobrancaMensal> listarPorAssinatura(Long assinaturaId);
+
+    // Listar cobranças filtrando opcionalmente por mês/ano de referência (nulos = sem filtro)
+    List<CobrancaMensal> listarPorMesAno(Integer mes, Integer ano);
 }
 

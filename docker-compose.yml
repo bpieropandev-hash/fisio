@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   # O Banco de Dados
   db:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     container_name: physio_db
     restart: always
     environment:
@@ -14,8 +12,11 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      # Este volume executa o script SQL automaticamente na primeira vez
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      # Bootstrap na primeira subida: cria o schema "master" e aplica as
+      # migrações V0..Vn em ordem (o entrypoint do postgres executa os .sql
+      # de /docker-entrypoint-initdb.d em ordem alfabética).
+      - ./src/main/resources/db/migration:/docker-entrypoint-initdb.d:ro
+      - ./scripts/docker-init/00_create_schema.sql:/docker-entrypoint-initdb.d/00_create_schema.sql:ro
 
   # Interface visual para gerenciar o banco (acesso via navegador)
   pgadmin:

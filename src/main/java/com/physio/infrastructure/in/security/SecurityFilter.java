@@ -28,29 +28,21 @@ public class SecurityFilter extends OncePerRequestFilter {
         var token = this.recoverToken(request);
 
         if (token != null) {
-            log.info("Token recebido no filtro: {}", token); // LOG 1
-
+            // Nunca logar o token: e uma credencial valida por 8h
             var login = tokenService.validateToken(token);
-            log.info("Login extraído do token: {}", login); // LOG 2
 
             if (!login.isEmpty()) {
                 UserDetails user = usuarioRepository.findByLogin(login);
 
                 if (user != null) {
-                    log.info("Usuário encontrado no banco: {}", user.getUsername()); // LOG 3
-                    log.info("Permissões do usuário: {}", user.getAuthorities()); // LOG 4
-
                     var authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
                     SecurityContextHolder.getContext().setAuthentication(authentication);
-                    log.info("Usuário autenticado no contexto de segurança com sucesso.");
                 } else {
                     log.warn("Usuário não encontrado no banco para o login: {}", login);
                 }
             } else {
-                log.warn("Token inválido ou expirado (login vazio).");
+                log.debug("Token inválido ou expirado.");
             }
-        } else {
-            log.debug("Nenhum token encontrado na requisição.");
         }
 
         filterChain.doFilter(request, response);

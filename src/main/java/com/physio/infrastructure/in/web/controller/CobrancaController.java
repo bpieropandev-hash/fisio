@@ -27,7 +27,23 @@ import java.util.stream.Collectors;
 public class CobrancaController {
 
     private final AtualizarCobrancaUseCase atualizarCobrancaUseCase;
+    private final com.physio.domain.ports.in.ListarCobrancasUseCase listarCobrancasUseCase;
     private final CobrancaMensalRepositoryPort cobrancaMensalRepositoryPort;
+
+    @Operation(summary = "Listar cobranças mensais",
+            description = "Lista todas as cobranças, com filtro opcional por mês e/ou ano de referência")
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "Lista retornada")})
+    @GetMapping
+    public ResponseEntity<List<CobrancaMensalResponseDTO>> listar(
+            @Parameter(description = "Mês de referência (1-12)", example = "7")
+            @RequestParam(required = false) Integer mes,
+            @Parameter(description = "Ano de referência", example = "2026")
+            @RequestParam(required = false) Integer ano) {
+        List<CobrancaMensalResponseDTO> dtos = listarCobrancasUseCase.listar(mes, ano).stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
+    }
 
     @Operation(summary = "Atualizar cobrança mensal", description = "Atualiza o status de uma cobrança (marcar como paga)")
     @ApiResponses({
@@ -51,23 +67,7 @@ public class CobrancaController {
                 request.getTipoPagamento()
         );
 
-        CobrancaMensalResponseDTO dto = CobrancaMensalResponseDTO.builder()
-                .id(cobranca.getId())
-                .assinaturaId(cobranca.getAssinatura().getId())
-                .descricao(cobranca.getAssinatura().getPaciente().getNome() + " - " +
-                          cobranca.getAssinatura().getServico().getNome())
-                .mesReferencia(cobranca.getMesReferencia())
-                .anoReferencia(cobranca.getAnoReferencia())
-                .valor(cobranca.getValor())
-                .status(cobranca.getStatus())
-                .dataPagamento(cobranca.getDataPagamento())
-                .recebedor(cobranca.getRecebedor())
-                .tipoPagamento(cobranca.getTipoPagamento())
-                .pctClinicaSnapshot(cobranca.getPctClinicaSnapshot())
-                .pctProfissionalSnapshot(cobranca.getPctProfissionalSnapshot())
-                .build();
-
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(toDTO(cobranca));
     }
 
     @Operation(summary = "Buscar cobrança por ID")
@@ -82,7 +82,24 @@ public class CobrancaController {
         CobrancaMensal cobranca = cobrancaMensalRepositoryPort.buscarPorId(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cobrança não encontrada: " + id));
 
-        CobrancaMensalResponseDTO dto = CobrancaMensalResponseDTO.builder()
+        return ResponseEntity.ok(toDTO(cobranca));
+    }
+
+    @Operation(summary = "Listar cobranças de uma assinatura")
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "Lista retornada")})
+    @GetMapping("/assinatura/{assinaturaId}")
+    public ResponseEntity<List<CobrancaMensalResponseDTO>> listarPorAssinatura(
+            @Parameter(description = "ID da assinatura", example = "1")
+            @PathVariable Long assinaturaId) {
+        List<CobrancaMensal> cobrancas = cobrancaMensalRepositoryPort.listarPorAssinatura(assinaturaId);
+        List<CobrancaMensalResponseDTO> dtos = cobrancas.stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
+    }
+
+    private CobrancaMensalResponseDTO toDTO(CobrancaMensal cobranca) {
+        return CobrancaMensalResponseDTO.builder()
                 .id(cobranca.getId())
                 .assinaturaId(cobranca.getAssinatura().getId())
                 .descricao(cobranca.getAssinatura().getPaciente().getNome() + " - " +
@@ -97,34 +114,5 @@ public class CobrancaController {
                 .pctClinicaSnapshot(cobranca.getPctClinicaSnapshot())
                 .pctProfissionalSnapshot(cobranca.getPctProfissionalSnapshot())
                 .build();
-
-        return ResponseEntity.ok(dto);
-    }
-
-    @Operation(summary = "Listar cobranças de uma assinatura")
-    @ApiResponses({@ApiResponse(responseCode = "200", description = "Lista retornada")})
-    @GetMapping("/assinatura/{assinaturaId}")
-    public ResponseEntity<List<CobrancaMensalResponseDTO>> listarPorAssinatura(
-            @Parameter(description = "ID da assinatura", example = "1")
-            @PathVariable Long assinaturaId) {
-        List<CobrancaMensal> cobrancas = cobrancaMensalRepositoryPort.listarPorAssinatura(assinaturaId);
-        List<CobrancaMensalResponseDTO> dtos = cobrancas.stream()
-                .map(c -> CobrancaMensalResponseDTO.builder()
-                        .id(c.getId())
-                        .assinaturaId(c.getAssinatura().getId())
-                        .descricao(c.getAssinatura().getPaciente().getNome() + " - " +
-                                  c.getAssinatura().getServico().getNome())
-                        .mesReferencia(c.getMesReferencia())
-                        .anoReferencia(c.getAnoReferencia())
-                        .valor(c.getValor())
-                        .status(c.getStatus())
-                        .dataPagamento(c.getDataPagamento())
-                        .recebedor(c.getRecebedor())
-                        .tipoPagamento(c.getTipoPagamento())
-                        .pctClinicaSnapshot(c.getPctClinicaSnapshot())
-                        .pctProfissionalSnapshot(c.getPctProfissionalSnapshot())
-                        .build())
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(dtos);
     }
 }

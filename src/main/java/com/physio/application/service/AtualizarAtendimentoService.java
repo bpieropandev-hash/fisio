@@ -20,7 +20,17 @@ public class AtualizarAtendimentoService implements AtualizarAtendimentoUseCase 
         var existente = atendimentoRepositoryPort.buscarPorId(id);
         if (existente == null) throw new IllegalArgumentException("Atendimento não encontrado: " + id);
 
-        if (atendimento.getDataHoraInicio() != null) existente.setDataHoraInicio(atendimento.getDataHoraInicio());
+        if (atendimento.getDataHoraInicio() != null) {
+            // Se só o início mudou, desloca o fim junto para preservar a duração —
+            // senão o atendimento fica com fim anterior ao início
+            if (atendimento.getDataHoraFim() == null
+                    && existente.getDataHoraInicio() != null
+                    && existente.getDataHoraFim() != null) {
+                var duracao = java.time.Duration.between(existente.getDataHoraInicio(), existente.getDataHoraFim());
+                existente.setDataHoraFim(atendimento.getDataHoraInicio().plus(duracao));
+            }
+            existente.setDataHoraInicio(atendimento.getDataHoraInicio());
+        }
         if (atendimento.getDataHoraFim() != null) existente.setDataHoraFim(atendimento.getDataHoraFim());
         if (atendimento.getStatus() != null) existente.setStatus(atendimento.getStatus());
         if (atendimento.getEvolucao() != null) existente.setEvolucao(atendimento.getEvolucao());

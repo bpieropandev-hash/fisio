@@ -5,18 +5,36 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.physio.infrastructure.out.persistence.entity.UsuarioEntity;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 
 @Service
 public class TokenService {
 
+    private static final int TAMANHO_MINIMO_SECRET = 32;
+    private static final Duration VALIDADE_TOKEN = Duration.ofHours(8);
+
     @Value("${api.security.token.secret}")
-    private String secret; // Defina isso no application.properties
+    private String secret;
+
+    @PostConstruct
+    void validarSecret() {
+        // Falha no boot em vez de aceitar tokens forjaveis com secret ausente/fraca
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException(
+                    "API_SECURITY_TOKEN_SECRET nao definida. Configure a variavel de ambiente " +
+                    "com um valor de no minimo " + TAMANHO_MINIMO_SECRET + " caracteres.");
+        }
+        if (secret.length() < TAMANHO_MINIMO_SECRET) {
+            throw new IllegalStateException(
+                    "API_SECURITY_TOKEN_SECRET muito curta (" + secret.length() + " caracteres). " +
+                    "Use no minimo " + TAMANHO_MINIMO_SECRET + " caracteres.");
+        }
+    }
 
     public String generateToken(UsuarioEntity usuario) {
         try {
@@ -45,7 +63,7 @@ public class TokenService {
     }
 
     private Instant genExpirationDate() {
-        // Token expira em 8 horas (um dia de trabalho)
-        return LocalDateTime.now().plusHours(8).toInstant(ZoneOffset.of("-03:00"));
+        // Instant e absoluto: independe do fuso do servidor (Railway roda em UTC)
+        return Instant.now().plus(VALIDADE_TOKEN);
     }
 }

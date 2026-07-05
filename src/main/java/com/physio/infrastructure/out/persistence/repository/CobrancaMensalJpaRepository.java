@@ -60,6 +60,19 @@ public interface CobrancaMensalJpaRepository extends JpaRepository<CobrancaMensa
             @Param("mes") Integer mes
     );
 
+    // Listar cobranças com filtro opcional por mês/ano (JOIN FETCH evita N+1 ao montar a descrição)
+    @Query("SELECT c FROM CobrancaMensalEntity c " +
+           "JOIN FETCH c.assinatura a " +
+           "JOIN FETCH a.paciente " +
+           "JOIN FETCH a.servico " +
+           "WHERE (:mes IS NULL OR c.mesReferencia = :mes) " +
+           "AND (:ano IS NULL OR c.anoReferencia = :ano) " +
+           "ORDER BY c.anoReferencia DESC, c.mesReferencia DESC, c.id ASC")
+    List<CobrancaMensalEntity> findByMesAnoOpcional(
+            @Param("mes") Integer mes,
+            @Param("ano") Integer ano
+    );
+
     // Buscar cobranças pendentes vencidas (mês atual ou anteriores) para alertas
     @Query("SELECT c FROM CobrancaMensalEntity c " +
            "WHERE c.status = 'PENDENTE' " +

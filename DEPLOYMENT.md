@@ -10,11 +10,11 @@ Este documento descreve como fazer o deploy da aplicação Physio Manager em pro
 
 ## Variáveis de Ambiente
 
-Crie um arquivo `.env` na raiz do projeto baseado no arquivo `env.example`:
+Crie um arquivo `.env` na raiz do projeto baseado no arquivo `.env.example`:
 
 ```bash
 # Copie o exemplo
-cp env.example .env
+cp .env.example .env
 
 # Edite com suas configurações
 nano .env  # ou use seu editor preferido

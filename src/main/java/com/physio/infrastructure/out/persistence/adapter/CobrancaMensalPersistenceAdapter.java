@@ -66,5 +66,12 @@ public class CobrancaMensalPersistenceAdapter implements CobrancaMensalRepositor
                 .map(mapper::toDomain)
                 .toList();
     }
+
+    @Override
+    public List<CobrancaMensal> listarPorMesAno(Integer mes, Integer ano) {
+        return jpaRepository.findByMesAnoOpcional(mes, ano).stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
 }
 
