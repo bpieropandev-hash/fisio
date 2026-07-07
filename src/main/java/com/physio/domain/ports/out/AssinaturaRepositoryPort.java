@@ -19,5 +19,8 @@ public interface AssinaturaRepositoryPort {
     
     // Buscar assinaturas de um paciente
     List<Assinatura> listarPorPaciente(Long pacienteId);
+
+    // Buscar assinaturas ativas de um serviço (para reajuste com propagação)
+    List<Assinatura> listarAtivasPorServico(Long servicoId);
 }
 

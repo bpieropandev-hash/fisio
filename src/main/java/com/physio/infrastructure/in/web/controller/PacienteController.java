@@ -2,6 +2,7 @@ package com.physio.infrastructure.in.web.controller;
 
 import com.physio.domain.model.Paciente;
 import com.physio.domain.ports.in.CriarPacienteUseCase;
+import com.physio.domain.ports.out.AssinaturaRepositoryPort;
 import com.physio.infrastructure.in.web.dto.PacienteCreateRequestDTO;
 import com.physio.infrastructure.in.web.dto.PacienteResponseDTO;
 import jakarta.validation.Valid;
@@ -16,6 +17,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -28,6 +31,9 @@ public class PacienteController {
     private final com.physio.domain.ports.in.BuscarPacienteUseCase buscarPacienteUseCase;
     private final com.physio.domain.ports.in.ListarPacientesUseCase listarPacientesUseCase;
     private final com.physio.domain.ports.in.AtualizarPacienteUseCase atualizarPacienteUseCase;
+    private final com.physio.domain.ports.in.InativarPacienteUseCase inativarPacienteUseCase;
+    private final com.physio.domain.ports.in.ReativarPacienteUseCase reativarPacienteUseCase;
+    private final AssinaturaRepositoryPort assinaturaRepositoryPort;
 
     @Operation(summary = "Criar paciente")
     @ApiResponse(responseCode = "201", description = "Paciente criado")
@@ -79,6 +85,11 @@ public class PacienteController {
     @GetMapping
     public ResponseEntity<List<PacienteResponseDTO>> listarPacientes() {
         var lista = listarPacientesUseCase.listarTodos();
+
+        Set<Integer> idsComAssinaturaAtiva = assinaturaRepositoryPort.listarAtivas().stream()
+                .map(a -> a.getPaciente().getId())
+                .collect(Collectors.toSet());
+
         var dtos = lista.stream().map(p -> PacienteResponseDTO.builder()
                 .id(p.getId())
                 .nome(p.getNome())
@@ -96,6 +107,7 @@ public class PacienteController {
                 .anamnese(p.getAnamnese())
                 .dataCadastro(p.getDataCadastro())
                 .ativo(p.getAtivo())
+                .possuiAssinaturaAtiva(idsComAssinaturaAtiva.contains(p.getId()))
                 .build()).toList();
         return ResponseEntity.ok(dtos);
     }
@@ -167,6 +179,43 @@ public class PacienteController {
                 .anamnese(atualizado.getAnamnese())
                 .dataCadastro(atualizado.getDataCadastro())
                 .ativo(atualizado.getAtivo())
+                .build();
+        return ResponseEntity.ok(dto);
+    }
+
+    @Operation(summary = "Inativar paciente", description = "Soft-delete: marca o paciente como inativo. Recusa se houver assinatura ativa.")
+    @ApiResponse(responseCode = "204", description = "Paciente inativado")
+    @ApiResponse(responseCode = "400", description = "Paciente possui assinatura ativa")
+    @ApiResponse(responseCode = "404", description = "Paciente não encontrado")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> inativarPaciente(@Parameter(description = "ID do paciente", example = "1") @PathVariable Long id) {
+        inativarPacienteUseCase.inativar(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Reativar paciente")
+    @ApiResponse(responseCode = "200", description = "Paciente reativado")
+    @ApiResponse(responseCode = "404", description = "Paciente não encontrado")
+    @PutMapping("/{id}/reativar")
+    public ResponseEntity<PacienteResponseDTO> reativarPaciente(@Parameter(description = "ID do paciente", example = "1") @PathVariable Long id) {
+        var paciente = reativarPacienteUseCase.reativar(id);
+        var dto = PacienteResponseDTO.builder()
+                .id(paciente.getId())
+                .nome(paciente.getNome())
+                .cpf(paciente.getCpf())
+                .dataNascimento(paciente.getDataNascimento())
+                .telefone(paciente.getTelefone())
+                .email(paciente.getEmail())
+                .logradouro(paciente.getLogradouro())
+                .numero(paciente.getNumero())
+                .bairro(paciente.getBairro())
+                .cidade(paciente.getCidade())
+                .estado(paciente.getEstado())
+                .cep(paciente.getCep())
+                .complemento(paciente.getComplemento())
+                .anamnese(paciente.getAnamnese())
+                .dataCadastro(paciente.getDataCadastro())
+                .ativo(paciente.getAtivo())
                 .build();
         return ResponseEntity.ok(dto);
     }

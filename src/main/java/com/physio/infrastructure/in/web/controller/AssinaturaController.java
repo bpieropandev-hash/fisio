@@ -4,7 +4,14 @@ import com.physio.domain.model.Assinatura;
 import com.physio.domain.ports.in.BuscarAssinaturaUseCase;
 import com.physio.domain.ports.in.CriarAssinaturaUseCase;
 import com.physio.domain.ports.in.CancelarAssinaturaUseCase;
+import com.physio.domain.ports.in.AtualizarAssinaturaUseCase;
+import com.physio.domain.ports.in.ReativarAssinaturaUseCase;
+import com.physio.domain.ports.in.TrocarPlanoAssinaturaUseCase;
+import com.physio.domain.model.TrocaPlanoResultado;
 import com.physio.infrastructure.in.web.dto.AssinaturaCreateRequestDTO;
+import com.physio.infrastructure.in.web.dto.AssinaturaUpdateRequestDTO;
+import com.physio.infrastructure.in.web.dto.AssinaturaTrocarPlanoRequestDTO;
+import com.physio.infrastructure.in.web.dto.AssinaturaTrocaPlanoResponseDTO;
 import com.physio.infrastructure.in.web.dto.AssinaturaResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -31,6 +38,9 @@ public class AssinaturaController {
     private final CriarAssinaturaUseCase criarAssinaturaUseCase;
     private final BuscarAssinaturaUseCase buscarAssinaturaUseCase;
     private final CancelarAssinaturaUseCase cancelarAssinaturaUseCase;
+    private final AtualizarAssinaturaUseCase atualizarAssinaturaUseCase;
+    private final ReativarAssinaturaUseCase reativarAssinaturaUseCase;
+    private final TrocarPlanoAssinaturaUseCase trocarPlanoAssinaturaUseCase;
 
     @Operation(summary = "Criar assinaturas", description = "Cria novas assinaturas mensais para um ou mais pacientes e um serviço")
     @ApiResponses({
@@ -147,5 +157,99 @@ public class AssinaturaController {
             @Parameter(description = "ID da assinatura") @PathVariable Long id) {
         cancelarAssinaturaUseCase.cancelar(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Editar assinatura", description = "Atualiza valor mensal e/ou dia de vencimento de uma assinatura ativa")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Assinatura atualizada"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos ou assinatura cancelada"),
+            @ApiResponse(responseCode = "404", description = "Assinatura não encontrada")
+    })
+    @PutMapping("/{id}")
+    public ResponseEntity<AssinaturaResponseDTO> atualizarAssinatura(
+            @Parameter(description = "ID da assinatura") @PathVariable Long id,
+            @Valid @RequestBody AssinaturaUpdateRequestDTO request) {
+        Assinatura assinatura = atualizarAssinaturaUseCase.atualizar(id, request.getValorMensal(), request.getDiaVencimento());
+
+        AssinaturaResponseDTO dto = AssinaturaResponseDTO.builder()
+                .id(assinatura.getId())
+                .pacienteId(assinatura.getPaciente().getId())
+                .pacienteNome(assinatura.getPaciente().getNome())
+                .servicoId(assinatura.getServico().getId())
+                .servicoNome(assinatura.getServico().getNome())
+                .valorMensal(assinatura.getValorMensal())
+                .diaVencimento(assinatura.getDiaVencimento())
+                .ativo(assinatura.getAtivo())
+                .dataInicio(assinatura.getDataInicio())
+                .dataCancelamento(assinatura.getDataCancelamento())
+                .build();
+
+        return ResponseEntity.ok(dto);
+    }
+
+    @Operation(summary = "Reativar assinatura", description = "Reativa uma assinatura cancelada, se não houver outra ativa para o mesmo paciente e serviço")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Assinatura reativada"),
+            @ApiResponse(responseCode = "400", description = "Já existe assinatura ativa para paciente/serviço"),
+            @ApiResponse(responseCode = "404", description = "Assinatura não encontrada")
+    })
+    @PutMapping("/{id}/reativar")
+    public ResponseEntity<AssinaturaResponseDTO> reativarAssinatura(
+            @Parameter(description = "ID da assinatura") @PathVariable Long id) {
+        Assinatura assinatura = reativarAssinaturaUseCase.reativar(id);
+
+        AssinaturaResponseDTO dto = AssinaturaResponseDTO.builder()
+                .id(assinatura.getId())
+                .pacienteId(assinatura.getPaciente().getId())
+                .pacienteNome(assinatura.getPaciente().getNome())
+                .servicoId(assinatura.getServico().getId())
+                .servicoNome(assinatura.getServico().getNome())
+                .valorMensal(assinatura.getValorMensal())
+                .diaVencimento(assinatura.getDiaVencimento())
+                .ativo(assinatura.getAtivo())
+                .dataInicio(assinatura.getDataInicio())
+                .dataCancelamento(assinatura.getDataCancelamento())
+                .build();
+
+        return ResponseEntity.ok(dto);
+    }
+
+    @Operation(summary = "Trocar plano da assinatura", description = "Cancela a assinatura atual e cria uma nova para o serviço informado, na mesma transação")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Plano trocado"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos, assinatura cancelada ou já existe assinatura ativa no novo serviço"),
+            @ApiResponse(responseCode = "404", description = "Assinatura ou serviço não encontrado")
+    })
+    @PostMapping("/{id}/trocar-plano")
+    public ResponseEntity<AssinaturaTrocaPlanoResponseDTO> trocarPlano(
+            @Parameter(description = "ID da assinatura atual") @PathVariable Long id,
+            @Valid @RequestBody AssinaturaTrocarPlanoRequestDTO request) {
+        TrocaPlanoResultado resultado = trocarPlanoAssinaturaUseCase.trocarPlano(
+                id,
+                request.getNovoServicoId(),
+                request.getNovoValorMensal(),
+                request.getDiaVencimento(),
+                request.getDataInicio()
+        );
+
+        Assinatura nova = resultado.getNovaAssinatura();
+        AssinaturaResponseDTO novaDto = AssinaturaResponseDTO.builder()
+                .id(nova.getId())
+                .pacienteId(nova.getPaciente().getId())
+                .pacienteNome(nova.getPaciente().getNome())
+                .servicoId(nova.getServico().getId())
+                .servicoNome(nova.getServico().getNome())
+                .valorMensal(nova.getValorMensal())
+                .diaVencimento(nova.getDiaVencimento())
+                .ativo(nova.getAtivo())
+                .dataInicio(nova.getDataInicio())
+                .build();
+
+        AssinaturaTrocaPlanoResponseDTO dto = AssinaturaTrocaPlanoResponseDTO.builder()
+                .novaAssinatura(novaDto)
+                .cobrancaMesAtualMantida(resultado.isCobrancaMesAtualMantida())
+                .build();
+
+        return ResponseEntity.ok(dto);
     }
 }

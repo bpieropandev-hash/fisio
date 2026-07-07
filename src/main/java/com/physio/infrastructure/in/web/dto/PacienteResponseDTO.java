@@ -32,4 +32,5 @@ public class PacienteResponseDTO {
     private String anamnese;
     private LocalDateTime dataCadastro;
     private Boolean ativo;
+    private Boolean possuiAssinaturaAtiva;
 }

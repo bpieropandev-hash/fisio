@@ -8,10 +8,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDate;
 
 @Slf4j
 @RestController
@@ -24,18 +28,24 @@ public class DashboardController {
 
     @Operation(
             summary = "Obter resumo do dashboard",
-            description = "Retorna estatísticas do mês atual: total de atendimentos concluídos, " +
+            description = "Retorna estatísticas do período informado (padrão: mês atual): total de atendimentos concluídos, " +
                          "atendimentos avulsos com pagamento pendente, faturamento líquido da profissional " +
-                         "(apenas atendimentos PAID) e lista de pendências com tipo (ASSINATURA ou ATENDIMENTO_AVULSO)"
+                         "(apenas atendimentos PAID) e lista de pendências com tipo (ASSINATURA ou ATENDIMENTO_AVULSO). " +
+                         "Parâmetros opcionais inicio/fim (yyyy-MM-dd) delimitam o período."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Estatísticas retornadas com sucesso")
     })
     @GetMapping("/resumo")
-    public ResponseEntity<DashboardStatsDTO> obterResumo() {
-        log.info("Recebendo requisição de resumo do dashboard");
+    public ResponseEntity<DashboardStatsDTO> obterResumo(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fim
+    ) {
+        log.info("Recebendo requisição de resumo do dashboard (inicio={}, fim={})", inicio, fim);
 
-        DashboardStatsDTO resumo = dashboardService.obterResumoMensal();
+        DashboardStatsDTO resumo = dashboardService.obterResumo(inicio, fim);
 
         log.info("Resumo do dashboard gerado - Atendimentos: {}, Pagamento Pendente: {}, Faturamento: R$ {}, Pendências: {}",
                 resumo.getTotalAtendimentos(),

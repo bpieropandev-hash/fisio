@@ -28,36 +28,53 @@ public class DashboardService {
     private final CobrancaMensalJpaRepository cobrancaMensalJpaRepository;
 
     /**
-     * Gera as estatísticas do dashboard para o mês atual
-     * 
+     * Gera as estatísticas do dashboard para o mês atual (comportamento padrão).
+     *
      * @return DashboardStatsDTO com total de atendimentos, faturamento da profissional e alertas de pendência
      */
     public DashboardStatsDTO obterResumoMensal() {
         LocalDate hoje = LocalDate.now();
-        int mesAtual = hoje.getMonthValue();
-        int anoAtual = hoje.getYear();
+        LocalDate inicioMes = hoje.withDayOfMonth(1);
+        LocalDate fimMes = hoje.withDayOfMonth(hoje.lengthOfMonth());
+        return obterResumo(inicioMes, fimMes);
+    }
 
-        log.info("Gerando resumo do dashboard para {}/{}", mesAtual, anoAtual);
+    /**
+     * Gera as estatísticas do dashboard para um período arbitrário [inicio, fim] (ambos inclusivos).
+     * Parâmetros nulos assumem o mês atual (início = dia 1, fim = último dia).
+     *
+     * @param inicio primeiro dia do período (inclusivo); null = dia 1 do mês atual
+     * @param fim    último dia do período (inclusivo); null = último dia do mês atual
+     */
+    public DashboardStatsDTO obterResumo(LocalDate inicio, LocalDate fim) {
+        LocalDate hoje = LocalDate.now();
+        if (inicio == null) inicio = hoje.withDayOfMonth(1);
+        if (fim == null) fim = hoje.withDayOfMonth(hoje.lengthOfMonth());
+        if (inicio.isAfter(fim)) {
+            throw new IllegalArgumentException("A data de início não pode ser posterior à data de fim");
+        }
 
-        // Calcular início e fim do mês
-        LocalDateTime inicioMes = LocalDate.of(anoAtual, mesAtual, 1).atStartOfDay();
-        LocalDateTime fimMes = inicioMes.plusMonths(1);
+        log.info("Gerando resumo do dashboard para o período {} a {}", inicio, fim);
+
+        // Atendimentos são filtrados por dataHoraInicio no intervalo [inicioDt, fimDt) — fim exclusivo no dia seguinte
+        LocalDateTime inicioDt = inicio.atStartOfDay();
+        LocalDateTime fimDt = fim.plusDays(1).atStartOfDay();
 
         // A. Total de Atendimentos Concluídos
-        Long totalAtendimentos = atendimentoJpaRepository.countConcluidosPorMes(inicioMes, fimMes);
+        Long totalAtendimentos = atendimentoJpaRepository.countConcluidosPorMes(inicioDt, fimDt);
         log.debug("Total de atendimentos concluídos: {}", totalAtendimentos);
 
         // B. Atendimentos com Pagamento Pendente (apenas avulsos)
         Long atendimentosPagamentoPendente = atendimentoJpaRepository
-                .countConcluidosComPagamentoPendentePorMes(inicioMes, fimMes);
+                .countConcluidosComPagamentoPendentePorMes(inicioDt, fimDt);
         log.debug("Atendimentos com pagamento pendente: {}", atendimentosPagamentoPendente);
 
         // C. Faturamento da Profissional
-        BigDecimal faturamentoProfissional = calcularFaturamentoProfissional(anoAtual, mesAtual, inicioMes, fimMes);
+        BigDecimal faturamentoProfissional = calcularFaturamentoProfissional(inicio, fim, inicioDt, fimDt);
         log.debug("Faturamento da profissional: R$ {}", faturamentoProfissional);
 
         // D. Alertas de Inadimplência
-        List<PendenciaDTO> alertasPendencia = obterPacientesInadimplentes(anoAtual, mesAtual);
+        List<PendenciaDTO> alertasPendencia = obterPacientesInadimplentes(inicio, fim, inicioDt, fimDt);
         log.debug("Pacientes inadimplentes: {}", alertasPendencia.size());
 
         return DashboardStatsDTO.builder()
@@ -71,18 +88,20 @@ public class DashboardService {
     /**
      * Calcula o faturamento líquido da profissional (valor que ela tem direito)
      * Soma: Atendimentos Avulsos Pagos (PAID) + Cobranças Mensais Pagas
-     * Nota: Apenas atendimentos com statusPagamento = PAID são considerados no faturamento
+     * Nota: Apenas atendimentos com statusPagamento = PAID são considerados no faturamento.
+     * Cobranças mensais são casadas pelo mês/ano de referência que cai dentro do período.
      */
-    private BigDecimal calcularFaturamentoProfissional(int ano, int mes, LocalDateTime inicioMes, LocalDateTime fimMes) {
+    private BigDecimal calcularFaturamentoProfissional(LocalDate inicio, LocalDate fim,
+                                                       LocalDateTime inicioDt, LocalDateTime fimDt) {
         BigDecimal total = BigDecimal.ZERO;
 
         // 1. Atendimentos Avulsos (Status CONCLUIDO, Valor > 0 e StatusPagamento = PAID)
         List<AtendimentoEntity> atendimentosAvulsos = atendimentoJpaRepository
-                .findAvulsosConcluidosPorMes(inicioMes, fimMes);
+                .findAvulsosConcluidosPorMes(inicioDt, fimDt);
 
         for (AtendimentoEntity atendimento : atendimentosAvulsos) {
             // Considerar apenas atendimentos pagos (PAID) no faturamento
-            if (atendimento.getStatusPagamento() != null && 
+            if (atendimento.getStatusPagamento() != null &&
                 "PAID".equals(atendimento.getStatusPagamento())) {
                 BigDecimal valorProfissional = atendimento.getValorCobrado()
                         .multiply(atendimento.getPctProfissionalSnapshot())
@@ -93,9 +112,10 @@ public class DashboardService {
 
         log.debug("Faturamento de atendimentos avulsos pagos: R$ {}", total);
 
-        // 2. Cobranças Mensais Pagas
+        // 2. Cobranças Mensais Pagas cujo mês/ano de referência está dentro do período
         List<CobrancaMensalEntity> cobrancasPagas = cobrancaMensalJpaRepository
-                .findPagasPorMes(ano, mes);
+                .findPagasPorPeriodo(inicio.getYear(), inicio.getMonthValue(),
+                        fim.getYear(), fim.getMonthValue());
 
         BigDecimal totalMensalidades = BigDecimal.ZERO;
         for (CobrancaMensalEntity cobranca : cobrancasPagas) {
@@ -112,18 +132,19 @@ public class DashboardService {
     }
 
     /**
-     * Busca pacientes inadimplentes:
-     * 1. Cobranças mensais pendentes vencidas (mês atual ou anteriores) - tipo ASSINATURA
-     * 2. Atendimentos avulsos concluídos com pagamento pendente - tipo ATENDIMENTO_AVULSO
+     * Busca pacientes inadimplentes dentro do período [inicio, fim]:
+     * 1. Cobranças mensais pendentes vencidas até o fim do período - tipo ASSINATURA
+     * 2. Atendimentos avulsos concluídos com pagamento pendente cuja data cai no período - tipo ATENDIMENTO_AVULSO
      * Retorna lista consolidada com informações detalhadas incluindo tipo de pendência
      */
-    private List<PendenciaDTO> obterPacientesInadimplentes(int anoAtual, int mesAtual) {
+    private List<PendenciaDTO> obterPacientesInadimplentes(LocalDate inicio, LocalDate fim,
+                                                           LocalDateTime inicioDt, LocalDateTime fimDt) {
         List<PendenciaDTO> pendencias = new ArrayList<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-        // 1. Pacientes com cobranças mensais pendentes vencidas (ASSINATURA)
+        // 1. Pacientes com cobranças mensais pendentes vencidas até o fim do período (ASSINATURA)
         List<CobrancaMensalEntity> cobrancasPendentes = cobrancaMensalJpaRepository
-                .findPendentesVencidas(anoAtual, mesAtual);
+                .findPendentesVencidas(fim.getYear(), fim.getMonthValue());
 
         for (CobrancaMensalEntity cobranca : cobrancasPendentes) {
             String nomePaciente = cobranca.getAssinatura().getPaciente().getNome();
@@ -139,13 +160,18 @@ public class DashboardService {
                     .build());
         }
 
-        // 2. Pacientes com atendimentos avulsos concluídos mas não pagos (ATENDIMENTO_AVULSO)
+        // 2. Pacientes com atendimentos avulsos concluídos mas não pagos, dentro do período (ATENDIMENTO_AVULSO)
         List<AtendimentoEntity> atendimentosPendentes = atendimentoJpaRepository
                 .findConcluidosComPagamentoPendente();
 
         for (AtendimentoEntity atendimento : atendimentosPendentes) {
+            LocalDateTime dataAtendimento = atendimento.getDataHoraInicio();
+            // Filtra pelo período selecionado (a query não tem recorte de data)
+            if (dataAtendimento.isBefore(inicioDt) || !dataAtendimento.isBefore(fimDt)) {
+                continue;
+            }
             String nomePaciente = atendimento.getPaciente().getNome();
-            String dataFormatada = atendimento.getDataHoraInicio().format(formatter);
+            String dataFormatada = dataAtendimento.format(formatter);
             String descricao = String.format("Atendimento concluído em %s - Valor: R$ %.2f - Pagamento pendente",
                     dataFormatada,
                     atendimento.getValorCobrado());

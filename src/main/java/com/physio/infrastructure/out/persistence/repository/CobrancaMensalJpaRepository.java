@@ -74,7 +74,10 @@ public interface CobrancaMensalJpaRepository extends JpaRepository<CobrancaMensa
     );
 
     // Buscar cobranças pendentes vencidas (mês atual ou anteriores) para alertas
+    // JOIN FETCH evita LazyInitializationException ao ler assinatura.paciente com open-in-view desligado
     @Query("SELECT c FROM CobrancaMensalEntity c " +
+           "JOIN FETCH c.assinatura a " +
+           "JOIN FETCH a.paciente " +
            "WHERE c.status = 'PENDENTE' " +
            "AND ((c.anoReferencia < :anoAtual) OR " +
            "(c.anoReferencia = :anoAtual AND c.mesReferencia <= :mesAtual)) " +

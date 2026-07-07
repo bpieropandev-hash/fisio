@@ -65,5 +65,12 @@ public class AssinaturaPersistenceAdapter implements AssinaturaRepositoryPort {
                 .map(mapper::toDomain)
                 .toList();
     }
+
+    @Override
+    public List<Assinatura> listarAtivasPorServico(Long servicoId) {
+        return jpaRepository.findByServico_IdAndAtivoTrue(Math.toIntExact(servicoId)).stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
 }
 

@@ -1,9 +1,14 @@
 package com.physio.infrastructure.in.web.controller;
 
 import com.physio.domain.model.Atendimento;
+import com.physio.domain.ports.in.ConcluirAtendimentosEmLoteUseCase;
 import com.physio.domain.ports.in.RealizarAgendamentoUseCase;
 import com.physio.infrastructure.in.web.dto.AgendamentoRequestDTO;
 import com.physio.infrastructure.in.web.dto.AtendimentoResponseDTO;
+import com.physio.infrastructure.in.web.dto.ConcluirAtendimentoLoteItemDTO;
+import com.physio.infrastructure.in.web.dto.ConcluirAtendimentosLoteRequestDTO;
+import com.physio.infrastructure.in.web.dto.ConcluirAtendimentosLoteResponseDTO;
+import com.physio.infrastructure.in.web.dto.FalhaLoteDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -32,6 +37,7 @@ public class AgendamentoController {
     private final com.physio.domain.ports.in.ListarAtendimentosUseCase listarAtendimentosUseCase;
     private final com.physio.domain.ports.in.AtualizarAtendimentoUseCase atualizarAtendimentoUseCase;
     private final com.physio.domain.ports.in.DeletarAtendimentoUseCase deletarAtendimentoUseCase;
+    private final ConcluirAtendimentosEmLoteUseCase concluirAtendimentosEmLoteUseCase;
 
     @Operation(
             summary = "Realizar agendamento", 
@@ -160,6 +166,33 @@ public class AgendamentoController {
                 .status(atualizado.getStatus())
                 .build();
         return ResponseEntity.ok(dto);
+    }
+
+    @Operation(summary = "Concluir atendimentos em lote",
+            description = "Conclui vários atendimentos numa chamada só (evolução + recebedor/tipoPagamento por item). " +
+                    "Falha de um item não impede os demais; retorna quantos foram concluídos e a lista de falhas com motivo.")
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "Processamento concluído (ver corpo para detalhes de falhas parciais)")})
+    @PostMapping("/concluir-lote")
+    public ResponseEntity<ConcluirAtendimentosLoteResponseDTO> concluirEmLote(
+            @Valid @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Lista de atendimentos a concluir")
+            @RequestBody ConcluirAtendimentosLoteRequestDTO request) {
+
+        List<ConcluirAtendimentosEmLoteUseCase.ItemConclusaoLote> itens = request.atendimentos().stream()
+                .map(this::toItemConclusaoLote)
+                .toList();
+
+        var resultado = concluirAtendimentosEmLoteUseCase.concluir(itens);
+
+        var falhasDTO = resultado.falhas().stream()
+                .map(f -> new FalhaLoteDTO(f.atendimentoId(), f.motivo()))
+                .toList();
+
+        return ResponseEntity.ok(new ConcluirAtendimentosLoteResponseDTO(resultado.concluidos(), falhasDTO));
+    }
+
+    private ConcluirAtendimentosEmLoteUseCase.ItemConclusaoLote toItemConclusaoLote(ConcluirAtendimentoLoteItemDTO dto) {
+        return new ConcluirAtendimentosEmLoteUseCase.ItemConclusaoLote(
+                dto.id(), dto.evolucao(), dto.recebedor(), dto.tipoPagamento());
     }
 
     @Operation(summary = "Deletar atendimento", description = "Remove fisicamente o atendimento do banco")

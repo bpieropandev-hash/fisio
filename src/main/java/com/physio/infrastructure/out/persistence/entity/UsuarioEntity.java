@@ -26,6 +26,21 @@ public class UsuarioEntity implements UserDetails {
     private String login;
     private String senha;
     private String role;
+    private String email;
+    private String nome;
+    private String telefone;
+
+    @Column(name = "foto_base64", columnDefinition = "TEXT")
+    private String fotoBase64;
+
+    @Column(name = "cor_primaria")
+    private String corPrimaria;
+
+    @Column(name = "fonte_tema")
+    private String fonteTema;
+
+    @Column(name = "tamanho_fonte")
+    private String tamanhoFonte;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

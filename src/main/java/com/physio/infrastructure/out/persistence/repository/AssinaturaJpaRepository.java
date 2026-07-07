@@ -27,5 +27,8 @@ public interface AssinaturaJpaRepository extends JpaRepository<AssinaturaEntity,
 
     // Buscar assinaturas de um paciente
     List<AssinaturaEntity> findByPaciente_Id(Integer pacienteId);
+
+    // Buscar assinaturas ativas de um serviço específico (para reajuste com propagação)
+    List<AssinaturaEntity> findByServico_IdAndAtivoTrue(Integer servicoId);
 }
 

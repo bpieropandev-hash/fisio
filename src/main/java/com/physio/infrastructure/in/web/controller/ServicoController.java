@@ -1,12 +1,17 @@
 package com.physio.infrastructure.in.web.controller;
 
+import com.physio.domain.model.ReajusteResultado;
 import com.physio.domain.model.ServicoConfig;
 import com.physio.domain.ports.in.CriarServicoUseCase;
 import com.physio.domain.ports.in.BuscarServicoUseCase;
 import com.physio.domain.ports.in.ListarServicosUseCase;
 import com.physio.domain.ports.in.AtualizarServicoUseCase;
 import com.physio.domain.ports.in.DeletarServicoUseCase;
+import com.physio.domain.ports.in.ReajustarServicoUseCase;
+import com.physio.domain.ports.in.ContarAssinaturasAtivasPorServicoUseCase;
 import com.physio.infrastructure.in.web.dto.ServicoCreateRequestDTO;
+import com.physio.infrastructure.in.web.dto.ServicoReajusteRequestDTO;
+import com.physio.infrastructure.in.web.dto.ServicoReajusteResponseDTO;
 import com.physio.infrastructure.in.web.dto.ServicoResponseDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +38,8 @@ public class ServicoController {
     private final ListarServicosUseCase listarServicosUseCase;
     private final AtualizarServicoUseCase atualizarServicoUseCase;
     private final DeletarServicoUseCase deletarServicoUseCase;
+    private final ReajustarServicoUseCase reajustarServicoUseCase;
+    private final ContarAssinaturasAtivasPorServicoUseCase contarAssinaturasAtivasPorServicoUseCase;
 
     @Operation(summary = "Criar serviço", description = "Cria um novo serviço com valores e percentuais")
     @ApiResponses({
@@ -134,5 +141,43 @@ public class ServicoController {
     public ResponseEntity<Void> deletarServico(@Parameter(description = "ID do serviço", example = "1") @PathVariable Long id) {
         deletarServicoUseCase.deletar(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Reajustar preço do serviço", description = "Atualiza o valor de tabela do serviço e propaga (opcionalmente) para assinaturas ativas e cobranças pendentes do mês corrente")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Reajuste aplicado"),
+            @ApiResponse(responseCode = "404", description = "Serviço não encontrado")
+    })
+    @PostMapping("/{id}/reajuste")
+    public ResponseEntity<ServicoReajusteResponseDTO> reajustarServico(
+            @Parameter(description = "ID do serviço", example = "1") @PathVariable Long id,
+            @Valid @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Parâmetros do reajuste") @RequestBody ServicoReajusteRequestDTO request) {
+        boolean aplicarEmAssinaturasAtivas = request.getAplicarEmAssinaturasAtivas() == null || request.getAplicarEmAssinaturasAtivas();
+        boolean somenteAssinaturasNoValorAntigo = request.getSomenteAssinaturasNoValorAntigo() == null || request.getSomenteAssinaturasNoValorAntigo();
+        boolean atualizarCobrancasPendentes = Boolean.TRUE.equals(request.getAtualizarCobrancasPendentes());
+
+        ReajusteResultado resultado = reajustarServicoUseCase.reajustar(
+                id,
+                request.getNovoValorBase(),
+                aplicarEmAssinaturasAtivas,
+                somenteAssinaturasNoValorAntigo,
+                atualizarCobrancasPendentes
+        );
+
+        ServicoReajusteResponseDTO dto = ServicoReajusteResponseDTO.builder()
+                .assinaturasAtualizadas(resultado.getAssinaturasAtualizadas())
+                .cobrancasAtualizadas(resultado.getCobrancasAtualizadas())
+                .assinaturasIgnoradasIds(resultado.getAssinaturasIgnoradasIds())
+                .build();
+
+        return ResponseEntity.ok(dto);
+    }
+
+    @Operation(summary = "Contar assinaturas ativas do serviço", description = "Usado pelo front para decidir se pergunta sobre propagação de reajuste")
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "Contagem retornada")})
+    @GetMapping("/{id}/assinaturas-ativas/count")
+    public ResponseEntity<Long> contarAssinaturasAtivas(
+            @Parameter(description = "ID do serviço", example = "1") @PathVariable Long id) {
+        return ResponseEntity.ok(contarAssinaturasAtivasPorServicoUseCase.contar(id));
     }
 }
