@@ -65,6 +65,7 @@ public class SecurityConfigurations {
                 .authorizeHttpRequests(req -> {
                     req.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/esqueci-senha", "/api/auth/redefinir-senha").permitAll();
                     req.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll();
+                    req.requestMatchers("/actuator/health", "/actuator/health/**").permitAll();
                     req.anyRequest().authenticated();
                 })
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
@@ -111,6 +112,9 @@ public class SecurityConfigurations {
 
         configuration.setAllowCredentials(corsAllowCredentials);
         configuration.setMaxAge(corsMaxAge);
+
+        // Sliding expiration (P3.3): sem isso o browser esconde o header do JS do front
+        configuration.setExposedHeaders(Collections.singletonList("X-Renewed-Token"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

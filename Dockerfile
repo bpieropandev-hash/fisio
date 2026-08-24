@@ -1,7 +1,7 @@
 # ============================================
 # Stage 1: Build da aplicação
 # ============================================
-FROM maven:3.9-eclipse-temurin-17 AS build
+FROM maven:3.9-eclipse-temurin-21 AS build
 
 # Define diretório de trabalho
 WORKDIR /app
@@ -23,7 +23,7 @@ RUN mvn clean package -DskipTests -B
 # ============================================
 # Stage 2: Imagem de produção (runtime)
 # ============================================
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:21-jre-jammy
 
 # Metadados da imagem
 LABEL maintainer="Physio Manager"
@@ -52,6 +52,10 @@ USER physio
 
 # Expõe a porta da aplicação
 EXPOSE 8080
+
+# Liveness check via Actuator (P1.4) — Railway consegue detectar app travado
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+    CMD wget -qO- http://localhost:8080/actuator/health | grep -q '"status":"UP"' || exit 1
 
 # Variáveis de ambiente padrão (podem ser sobrescritas)
 ENV JAVA_OPTS="-Xmx512m -Xms256m -XX:+UseG1GC -XX:MaxGCPauseMillis=200" \
