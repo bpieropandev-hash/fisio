@@ -5,6 +5,7 @@ import com.physio.domain.ports.in.AtualizarCobrancaUseCase;
 import com.physio.domain.ports.out.CobrancaMensalRepositoryPort;
 import com.physio.infrastructure.in.web.dto.CobrancaMensalResponseDTO;
 import com.physio.infrastructure.in.web.dto.CobrancaMensalUpdateRequestDTO;
+import com.physio.infrastructure.in.web.dto.PaginaResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -13,6 +14,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,18 +34,22 @@ public class CobrancaController {
     private final CobrancaMensalRepositoryPort cobrancaMensalRepositoryPort;
 
     @Operation(summary = "Listar cobranças mensais",
-            description = "Lista todas as cobranças, com filtro opcional por mês e/ou ano de referência")
-    @ApiResponses({@ApiResponse(responseCode = "200", description = "Lista retornada")})
+            description = "Lista cobranças paginadas, com filtro opcional por mês e/ou ano de referência")
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "Página retornada")})
     @GetMapping
-    public ResponseEntity<List<CobrancaMensalResponseDTO>> listar(
+    public ResponseEntity<PaginaResponseDTO<CobrancaMensalResponseDTO>> listar(
             @Parameter(description = "Mês de referência (1-12)", example = "7")
             @RequestParam(required = false) Integer mes,
             @Parameter(description = "Ano de referência", example = "2026")
-            @RequestParam(required = false) Integer ano) {
-        List<CobrancaMensalResponseDTO> dtos = listarCobrancasUseCase.listar(mes, ano).stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(dtos);
+            @RequestParam(required = false) Integer ano,
+            @Parameter(description = "Página (0-based)", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Tamanho da página", example = "20")
+            @RequestParam(defaultValue = "20") int size) {
+        var pageable = PageRequest.of(page, size,
+                Sort.by(Sort.Order.desc("anoReferencia"), Sort.Order.desc("mesReferencia"), Sort.Order.asc("id")));
+        var pagina = listarCobrancasUseCase.listar(mes, ano, pageable);
+        return ResponseEntity.ok(PaginaResponseDTO.from(pagina, this::toDTO));
     }
 
     @Operation(summary = "Atualizar cobrança mensal", description = "Atualiza o status de uma cobrança (marcar como paga)")

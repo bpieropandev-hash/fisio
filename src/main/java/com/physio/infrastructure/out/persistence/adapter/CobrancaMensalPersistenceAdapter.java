@@ -6,6 +6,8 @@ import com.physio.infrastructure.out.persistence.entity.CobrancaMensalEntity;
 import com.physio.infrastructure.out.persistence.mapper.CobrancaMensalMapper;
 import com.physio.infrastructure.out.persistence.repository.CobrancaMensalJpaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -68,10 +70,9 @@ public class CobrancaMensalPersistenceAdapter implements CobrancaMensalRepositor
     }
 
     @Override
-    public List<CobrancaMensal> listarPorMesAno(Integer mes, Integer ano) {
-        return jpaRepository.findByMesAnoOpcional(mes, ano).stream()
-                .map(mapper::toDomain)
-                .toList();
+    public Page<CobrancaMensal> listarPorMesAno(Integer mes, Integer ano, Pageable pageable) {
+        return jpaRepository.findByMesAnoOpcional(mes, ano, pageable)
+                .map(mapper::toDomain);
     }
 }
 

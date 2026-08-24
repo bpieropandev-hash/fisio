@@ -1,6 +1,8 @@
 package com.physio.domain.ports.out;
 
 import com.physio.domain.model.CobrancaMensal;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,7 +22,7 @@ public interface CobrancaMensalRepositoryPort {
     // Buscar cobranças de uma assinatura
     List<CobrancaMensal> listarPorAssinatura(Long assinaturaId);
 
-    // Listar cobranças filtrando opcionalmente por mês/ano de referência (nulos = sem filtro)
-    List<CobrancaMensal> listarPorMesAno(Integer mes, Integer ano);
+    // Listar cobranças filtrando opcionalmente por mês/ano de referência (nulos = sem filtro), paginado (P1.3)
+    Page<CobrancaMensal> listarPorMesAno(Integer mes, Integer ano, Pageable pageable);
 }
 
