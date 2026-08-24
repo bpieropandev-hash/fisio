@@ -15,11 +15,11 @@ import org.springframework.dao.DataIntegrityViolationException;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -59,8 +59,8 @@ class GeradorCobrancaServiceTest {
     void naoDeveGerarCobrancaDuplicadaParaAssinaturaJaCobradaNoMes() {
         Assinatura assinatura = criarAssinatura(1, "180.00");
         when(assinaturaRepositoryPort.listarAtivas()).thenReturn(List.of(assinatura));
-        when(cobrancaMensalRepositoryPort.buscarPorAssinaturaMesAno(1L, 7, 2026))
-                .thenReturn(Optional.of(CobrancaMensal.builder().id(99).build()));
+        when(cobrancaMensalRepositoryPort.buscarAssinaturaIdsComCobranca(7, 2026))
+                .thenReturn(Set.of(1));
 
         int geradas = geradorCobrancaService.gerarCobrancasDoMes(7, 2026);
 
@@ -72,8 +72,8 @@ class GeradorCobrancaServiceTest {
     void deveGerarCobrancaComSnapshotDePercentualEValorDaAssinatura() {
         Assinatura assinatura = criarAssinatura(2, "180.00");
         when(assinaturaRepositoryPort.listarAtivas()).thenReturn(List.of(assinatura));
-        when(cobrancaMensalRepositoryPort.buscarPorAssinaturaMesAno(2L, 7, 2026))
-                .thenReturn(Optional.empty());
+        when(cobrancaMensalRepositoryPort.buscarAssinaturaIdsComCobranca(7, 2026))
+                .thenReturn(Set.of());
 
         int geradas = geradorCobrancaService.gerarCobrancasDoMes(7, 2026);
 
@@ -93,8 +93,8 @@ class GeradorCobrancaServiceTest {
         Assinatura assinatura1 = criarAssinatura(3, "100.00");
         Assinatura assinatura2 = criarAssinatura(4, "200.00");
         when(assinaturaRepositoryPort.listarAtivas()).thenReturn(List.of(assinatura1, assinatura2));
-        when(cobrancaMensalRepositoryPort.buscarPorAssinaturaMesAno(anyLong(), any(), any()))
-                .thenReturn(Optional.empty());
+        when(cobrancaMensalRepositoryPort.buscarAssinaturaIdsComCobranca(anyInt(), anyInt()))
+                .thenReturn(Set.of());
         when(cobrancaMensalRepositoryPort.salvar(any()))
                 .thenThrow(new DataIntegrityViolationException("cobrança já criada concorrentemente"))
                 .thenAnswer(invocation -> invocation.getArgument(0));

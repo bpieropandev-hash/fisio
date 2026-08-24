@@ -12,6 +12,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -34,12 +35,15 @@ public class GeradorCobrancaService implements GerarCobrancasUseCase {
         List<Assinatura> assinaturasAtivas = assinaturaRepositoryPort.listarAtivas();
         log.info("Encontradas {} assinaturas ativas", assinaturasAtivas.size());
 
+        // P2.4: 1 query pra saber quais assinaturas já têm cobrança no mês, em vez de
+        // 1 query de existência por assinatura dentro do loop (N+1).
+        Set<Integer> assinaturaIdsComCobranca = cobrancaMensalRepositoryPort
+                .buscarAssinaturaIdsComCobranca(mes, ano);
+
         int cobrancasGeradas = 0;
 
         for (Assinatura assinatura : assinaturasAtivas) {
-            boolean jaExiste = cobrancaMensalRepositoryPort
-                    .buscarPorAssinaturaMesAno(Long.valueOf(assinatura.getId()), mes, ano)
-                    .isPresent();
+            boolean jaExiste = assinaturaIdsComCobranca.contains(assinatura.getId());
 
             if (jaExiste) {
                 log.debug("Cobrança já existe para assinatura ID: {} - mês: {}/{}",

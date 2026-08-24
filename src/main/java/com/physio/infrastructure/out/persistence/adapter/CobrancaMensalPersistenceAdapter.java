@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
@@ -73,6 +74,11 @@ public class CobrancaMensalPersistenceAdapter implements CobrancaMensalRepositor
     public Page<CobrancaMensal> listarPorMesAno(Integer mes, Integer ano, Pageable pageable) {
         return jpaRepository.findByMesAnoOpcional(mes, ano, pageable)
                 .map(mapper::toDomain);
+    }
+
+    @Override
+    public Set<Integer> buscarAssinaturaIdsComCobranca(Integer mes, Integer ano) {
+        return jpaRepository.buscarAssinaturaIdsComCobranca(mes, ano);
     }
 }
 

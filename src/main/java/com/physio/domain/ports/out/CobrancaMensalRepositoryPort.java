@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface CobrancaMensalRepositoryPort {
     CobrancaMensal salvar(CobrancaMensal cobrancaMensal);
@@ -24,5 +25,8 @@ public interface CobrancaMensalRepositoryPort {
 
     // Listar cobranças filtrando opcionalmente por mês/ano de referência (nulos = sem filtro), paginado (P1.3)
     Page<CobrancaMensal> listarPorMesAno(Integer mes, Integer ano, Pageable pageable);
+
+    // IDs das assinaturas que já têm cobrança gerada num mês/ano, numa query só (P2.4 — evita N+1)
+    Set<Integer> buscarAssinaturaIdsComCobranca(Integer mes, Integer ano);
 }
 
