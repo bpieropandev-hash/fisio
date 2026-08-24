@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -93,42 +92,20 @@ public class DashboardService {
      */
     private BigDecimal calcularFaturamentoProfissional(LocalDate inicio, LocalDate fim,
                                                        LocalDateTime inicioDt, LocalDateTime fimDt) {
-        BigDecimal total = BigDecimal.ZERO;
+        // P2.3: soma em banco (SUM) em vez de carregar as entidades pra somar em Java.
 
         // 1. Atendimentos Avulsos (Status CONCLUIDO, Valor > 0 e StatusPagamento = PAID)
-        List<AtendimentoEntity> atendimentosAvulsos = atendimentoJpaRepository
-                .findAvulsosConcluidosPorMes(inicioDt, fimDt);
-
-        for (AtendimentoEntity atendimento : atendimentosAvulsos) {
-            // Considerar apenas atendimentos pagos (PAID) no faturamento
-            if (atendimento.getStatusPagamento() != null &&
-                "PAID".equals(atendimento.getStatusPagamento())) {
-                BigDecimal valorProfissional = atendimento.getValorCobrado()
-                        .multiply(atendimento.getPctProfissionalSnapshot())
-                        .divide(new BigDecimal(100), 2, RoundingMode.HALF_UP);
-                total = total.add(valorProfissional);
-            }
-        }
-
-        log.debug("Faturamento de atendimentos avulsos pagos: R$ {}", total);
+        BigDecimal totalAvulsos = atendimentoJpaRepository
+                .somarFaturamentoProfissionalAvulsos(inicioDt, fimDt);
+        log.debug("Faturamento de atendimentos avulsos pagos: R$ {}", totalAvulsos);
 
         // 2. Cobranças Mensais Pagas cujo mês/ano de referência está dentro do período
-        List<CobrancaMensalEntity> cobrancasPagas = cobrancaMensalJpaRepository
-                .findPagasPorPeriodo(inicio.getYear(), inicio.getMonthValue(),
+        BigDecimal totalMensalidades = cobrancaMensalJpaRepository
+                .somarValorProfissionalPagoPorPeriodo(inicio.getYear(), inicio.getMonthValue(),
                         fim.getYear(), fim.getMonthValue());
-
-        BigDecimal totalMensalidades = BigDecimal.ZERO;
-        for (CobrancaMensalEntity cobranca : cobrancasPagas) {
-            BigDecimal valorProfissional = cobranca.getValor()
-                    .multiply(cobranca.getPctProfissionalSnapshot())
-                    .divide(new BigDecimal(100), 2, RoundingMode.HALF_UP);
-            totalMensalidades = totalMensalidades.add(valorProfissional);
-        }
-
         log.debug("Faturamento de mensalidades: R$ {}", totalMensalidades);
 
-        total = total.add(totalMensalidades);
-        return total;
+        return totalAvulsos.add(totalMensalidades);
     }
 
     /**

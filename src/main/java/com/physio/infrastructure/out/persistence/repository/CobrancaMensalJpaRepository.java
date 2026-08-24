@@ -60,6 +60,29 @@ public interface CobrancaMensalJpaRepository extends JpaRepository<CobrancaMensa
             @Param("mesFim") Integer mesFim
     );
 
+    // Faturamento da profissional com mensalidades (P2.3): soma em banco em vez de carregar
+    // entidades pra somar em Java. Mesmo filtro de findPagasPorPeriodo.
+    @Query("SELECT COALESCE(SUM(c.valor * c.pctProfissionalSnapshot / 100), 0) FROM CobrancaMensalEntity c " +
+           "WHERE c.status = 'PAGO' " +
+           "AND c.recebedor IS NOT NULL " +
+           "AND (c.anoReferencia > :anoInicio OR (c.anoReferencia = :anoInicio AND c.mesReferencia >= :mesInicio)) " +
+           "AND (c.anoReferencia < :anoFim OR (c.anoReferencia = :anoFim AND c.mesReferencia <= :mesFim))")
+    java.math.BigDecimal somarValorProfissionalPagoPorPeriodo(
+            @Param("anoInicio") Integer anoInicio,
+            @Param("mesInicio") Integer mesInicio,
+            @Param("anoFim") Integer anoFim,
+            @Param("mesFim") Integer mesFim
+    );
+
+    // N+1 fix (P2.4): assinaturas que já têm cobrança gerada num mês/ano, numa query só —
+    // GeradorCobrancaService faz o filtro em memória em vez de 1 SELECT de existência por assinatura.
+    @Query("SELECT c.assinatura.id FROM CobrancaMensalEntity c " +
+           "WHERE c.mesReferencia = :mes AND c.anoReferencia = :ano")
+    java.util.Set<Integer> buscarAssinaturaIdsComCobranca(
+            @Param("mes") Integer mes,
+            @Param("ano") Integer ano
+    );
+
     // Buscar cobranças de uma assinatura
     List<CobrancaMensalEntity> findByAssinatura_Id(Integer assinaturaId);
 
