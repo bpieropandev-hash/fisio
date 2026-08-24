@@ -10,6 +10,7 @@ import java.time.temporal.ChronoUnit;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -62,13 +63,13 @@ class TokenServiceTest {
 
         assertTrue(token != null && !token.isBlank());
         assertEquals(3, token.split("\\.").length, "JWT deve ter header.payload.signature");
-        assertEquals("fisioterapeuta", tokenService.validateToken(token));
+        assertEquals("fisioterapeuta", tokenService.validateToken(token).orElseThrow());
     }
 
     @Test
     void deveRetornarVazioParaTokenInvalido() {
         setSecret(SECRET_VALIDA);
-        assertEquals("", tokenService.validateToken("token.invalido.aqui"));
+        assertTrue(tokenService.validateToken("token.invalido.aqui").isEmpty());
     }
 
     @Test
@@ -79,7 +80,7 @@ class TokenServiceTest {
         String token = tokenService.generateToken(usuario);
 
         setSecret("outra-secret-completamente-diferente-32c");
-        assertEquals("", tokenService.validateToken(token));
+        assertTrue(tokenService.validateToken(token).isEmpty());
     }
 
     @Test
@@ -92,6 +93,38 @@ class TokenServiceTest {
                 .withExpiresAt(Instant.now().minus(1, ChronoUnit.HOURS))
                 .sign(algorithm);
 
-        assertEquals("", tokenService.validateToken(tokenExpirado));
+        assertTrue(tokenService.validateToken(tokenExpirado).isEmpty());
+    }
+
+    @Test
+    void naoDeveRenovarTokenLongeDaExpiracao() {
+        setSecret(SECRET_VALIDA);
+        UsuarioEntity usuario = new UsuarioEntity();
+        usuario.setLogin("fisioterapeuta");
+        String token = tokenService.generateToken(usuario); // expira em 8h, limiar é 1h
+
+        assertTrue(tokenService.renovarSeProximoDaExpiracao(token).isEmpty());
+    }
+
+    @Test
+    void deveRenovarTokenProximoDaExpiracao() {
+        setSecret(SECRET_VALIDA);
+        com.auth0.jwt.algorithms.Algorithm algorithm = com.auth0.jwt.algorithms.Algorithm.HMAC256(SECRET_VALIDA);
+        String tokenQuaseExpirando = com.auth0.jwt.JWT.create()
+                .withIssuer("physio-manager")
+                .withSubject("fisioterapeuta")
+                .withExpiresAt(Instant.now().plus(10, ChronoUnit.MINUTES))
+                .sign(algorithm);
+
+        var novoToken = tokenService.renovarSeProximoDaExpiracao(tokenQuaseExpirando);
+
+        assertTrue(novoToken.isPresent());
+        assertEquals("fisioterapeuta", tokenService.validateToken(novoToken.get()).orElseThrow());
+    }
+
+    @Test
+    void naoDeveRenovarTokenInvalido() {
+        setSecret(SECRET_VALIDA);
+        assertFalse(tokenService.renovarSeProximoDaExpiracao("token.invalido.aqui").isPresent());
     }
 }

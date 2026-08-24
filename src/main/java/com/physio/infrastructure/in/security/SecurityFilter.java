@@ -23,20 +23,28 @@ public class SecurityFilter extends OncePerRequestFilter {
     private final TokenService tokenService;
     private final UsuarioJpaRepository usuarioRepository;
 
+    private static final String HEADER_TOKEN_RENOVADO = "X-Renewed-Token";
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         var token = this.recoverToken(request);
 
         if (token != null) {
             // Nunca logar o token: e uma credencial valida por 8h
-            var login = tokenService.validateToken(token);
+            var loginOpt = tokenService.validateToken(token);
 
-            if (!login.isEmpty()) {
+            if (loginOpt.isPresent()) {
+                var login = loginOpt.get();
                 UserDetails user = usuarioRepository.findByLogin(login);
 
                 if (user != null) {
                     var authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
                     SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                    // Sliding expiration (P3.3): perto de expirar, renova e devolve no header
+                    // pro front trocar o token guardado sem derrubar a sessão no meio do uso.
+                    tokenService.renovarSeProximoDaExpiracao(token)
+                            .ifPresent(novoToken -> response.setHeader(HEADER_TOKEN_RENOVADO, novoToken));
                 } else {
                     log.warn("Usuário não encontrado no banco para o login: {}", login);
                 }
