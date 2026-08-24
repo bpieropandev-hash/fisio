@@ -1,6 +1,7 @@
 package com.physio.application.service;
 
 import com.physio.domain.model.Atendimento;
+import com.physio.domain.model.StatusPagamento;
 import com.physio.domain.ports.in.AtualizarAtendimentoUseCase;
 import com.physio.domain.ports.out.AtendimentoRepositoryPort;
 import lombok.RequiredArgsConstructor;
@@ -49,7 +50,7 @@ public class AtualizarAtendimentoService implements AtualizarAtendimentoUseCase 
             }
             existente.setRecebedor(null);
             existente.setTipoPagamento(null);
-            existente.setStatusPagamento("PAYMENT_PENDING");
+            existente.setStatusPagamento(StatusPagamento.PAYMENT_PENDING);
             log.debug("Atendimento {} tem assinatura - pagamento será via mensalidade, não via atendimento", id);
         } else {
             // Para atendimentos avulsos (valorCobrado > 0), aplicar lógica normal de pagamento
@@ -66,10 +67,10 @@ public class AtualizarAtendimentoService implements AtualizarAtendimentoUseCase 
             // Regra de negócio: ambos (recebedor E tipoPagamento) devem estar presentes para ser PAID
             // Caso contrário, marca como PAYMENT_PENDING
             if (existente.getRecebedor() != null && existente.getTipoPagamento() != null) {
-                existente.setStatusPagamento("PAID");
+                existente.setStatusPagamento(StatusPagamento.PAID);
                 log.debug("Atendimento {} marcado como PAID - recebedor e tipoPagamento presentes", id);
             } else {
-                existente.setStatusPagamento("PAYMENT_PENDING");
+                existente.setStatusPagamento(StatusPagamento.PAYMENT_PENDING);
                 log.debug("Atendimento {} marcado como PAYMENT_PENDING - dados de pagamento ausentes ou incompletos", id);
             }
         }

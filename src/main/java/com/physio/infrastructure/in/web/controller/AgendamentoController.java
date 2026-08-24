@@ -82,7 +82,7 @@ public class AgendamentoController {
                         .valorCobrado(a.getValorCobrado())
                         .pctClinicaSnapshot(a.getPctClinicaSnapshot())
                         .pctProfissionalSnapshot(a.getPctProfissionalSnapshot())
-                        .status(a.getStatus())
+                        .status(a.getStatus() != null ? a.getStatus().name() : null)
                         .build())
                 .toList();
 
@@ -107,7 +107,7 @@ public class AgendamentoController {
                 .valorCobrado(a.getValorCobrado())
                 .pctClinicaSnapshot(a.getPctClinicaSnapshot())
                 .pctProfissionalSnapshot(a.getPctProfissionalSnapshot())
-                .status(a.getStatus())
+                .status(a.getStatus() != null ? a.getStatus().name() : null)
                 .evolucao(a.getEvolucao())
                 .recebedor(a.getRecebedor() != null ? a.getRecebedor().name() : null)
                 .tipoPagamento(a.getTipoPagamento() !=  null ? a.getTipoPagamento().name() : null)
@@ -132,7 +132,7 @@ public class AgendamentoController {
                 .valorCobrado(atendimento.getValorCobrado())
                 .pctClinicaSnapshot(atendimento.getPctClinicaSnapshot())
                 .pctProfissionalSnapshot(atendimento.getPctProfissionalSnapshot())
-                .status(atendimento.getStatus())
+                .status(atendimento.getStatus() != null ? atendimento.getStatus().name() : null)
                 .build();
         return ResponseEntity.ok(dto);
     }
@@ -163,7 +163,7 @@ public class AgendamentoController {
                 .valorCobrado(atualizado.getValorCobrado())
                 .pctClinicaSnapshot(atualizado.getPctClinicaSnapshot())
                 .pctProfissionalSnapshot(atualizado.getPctProfissionalSnapshot())
-                .status(atualizado.getStatus())
+                .status(atualizado.getStatus() != null ? atualizado.getStatus().name() : null)
                 .build();
         return ResponseEntity.ok(dto);
     }

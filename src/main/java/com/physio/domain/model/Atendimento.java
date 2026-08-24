@@ -19,14 +19,14 @@ public class Atendimento {
     private ServicoConfig servicoBase;
     private LocalDateTime dataHoraInicio;
     private LocalDateTime dataHoraFim;
-    private String status;
+    private StatusAtendimento status;
     private BigDecimal valorCobrado;
     private BigDecimal pctClinicaSnapshot;
     private BigDecimal pctProfissionalSnapshot;
     private String evolucao;
     private Recebedor recebedor;
     private TipoPagamento tipoPagamento;
-    private String statusPagamento;
+    private StatusPagamento statusPagamento;
     
     // Método de negócio para criar snapshot financeiro
     public void criarSnapshotFinanceiro(ServicoConfig servico) {

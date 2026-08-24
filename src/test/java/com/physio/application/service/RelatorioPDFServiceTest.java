@@ -1,6 +1,8 @@
 package com.physio.application.service;
 
 import com.physio.domain.model.Recebedor;
+import com.physio.domain.model.StatusAtendimento;
+import com.physio.domain.model.StatusPagamento;
 import com.physio.domain.model.TipoPagamento;
 import com.physio.domain.ports.out.CobrancaMensalRepositoryPort;
 import com.physio.infrastructure.out.persistence.entity.AtendimentoEntity;
@@ -76,10 +78,10 @@ class RelatorioPDFServiceTest {
         atendimento.setValorCobrado(new BigDecimal("150.00"));
         atendimento.setPctClinicaSnapshot(new BigDecimal("30"));
         atendimento.setPctProfissionalSnapshot(new BigDecimal("70"));
-        atendimento.setStatus("CONCLUIDO");
+        atendimento.setStatus(StatusAtendimento.CONCLUIDO);
         atendimento.setRecebedor(Recebedor.CLINICA);
         atendimento.setTipoPagamento(TipoPagamento.PIX);
-        atendimento.setStatusPagamento("PAID");
+        atendimento.setStatusPagamento(StatusPagamento.PAID);
 
         when(atendimentoJpaRepository.findParaRelatorioFinanceiro(any(), any(), any()))
                 .thenReturn(List.of(atendimento));
@@ -111,8 +113,8 @@ class RelatorioPDFServiceTest {
         atendimento.setValorCobrado(BigDecimal.ZERO);
         atendimento.setPctClinicaSnapshot(new BigDecimal("30"));
         atendimento.setPctProfissionalSnapshot(new BigDecimal("70"));
-        atendimento.setStatus("CONCLUIDO");
-        atendimento.setStatusPagamento("PAYMENT_PENDING");
+        atendimento.setStatus(StatusAtendimento.CONCLUIDO);
+        atendimento.setStatusPagamento(StatusPagamento.PAYMENT_PENDING);
         atendimento.setEvolucao("Paciente evoluiu bem, sem queixas de dor. Manteve o protocolo.");
 
         when(pacienteJpaRepository.findById(1)).thenReturn(Optional.of(paciente));

@@ -1,6 +1,7 @@
 package com.physio.application.service;
 
 import com.physio.domain.model.Atendimento;
+import com.physio.domain.model.StatusAtendimento;
 import com.physio.domain.ports.in.AtualizarAtendimentoUseCase;
 import com.physio.domain.ports.in.ConcluirAtendimentosEmLoteUseCase;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +35,7 @@ public class ConcluirAtendimentosEmLoteService implements ConcluirAtendimentosEm
 
             try {
                 Atendimento domain = Atendimento.builder()
-                        .status("CONCLUIDO")
+                        .status(StatusAtendimento.CONCLUIDO)
                         .evolucao(item.evolucao())
                         .recebedor(item.recebedor())
                         .tipoPagamento(item.tipoPagamento())

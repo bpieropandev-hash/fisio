@@ -2,6 +2,7 @@ package com.physio.infrastructure.in.web.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.physio.domain.model.Recebedor;
+import com.physio.domain.model.StatusAtendimento;
 import com.physio.domain.model.TipoPagamento;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -21,8 +22,8 @@ public class AtendimentoUpdateRequestDTO {
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime dataHoraInicio;
 
-    @Schema(description = "Status do atendimento (AGENDADO, CONCLUIDO, CANCELADO, FALTA)", example = "CONCLUIDO")
-    private String status;
+    @Schema(description = "Status do atendimento", example = "CONCLUIDO")
+    private StatusAtendimento status;
 
     @Schema(description = "Texto de evolução / prontuário")
     private String evolucao;

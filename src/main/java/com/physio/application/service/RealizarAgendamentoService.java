@@ -3,6 +3,8 @@ package com.physio.application.service;
 import com.physio.domain.model.Atendimento;
 import com.physio.domain.model.Paciente;
 import com.physio.domain.model.ServicoConfig;
+import com.physio.domain.model.StatusAtendimento;
+import com.physio.domain.model.StatusPagamento;
 import com.physio.domain.model.TipoServico;
 import com.physio.domain.ports.in.RealizarAgendamentoUseCase;
 import com.physio.domain.ports.out.AssinaturaRepositoryPort;
@@ -131,8 +133,8 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
                 .servicoBase(servico)
                 .dataHoraInicio(dataHora)
                 .dataHoraFim(servico.getNome().equals("Avaliação") ? dataHora.plusMinutes(90) : dataHora.plusMinutes(60))
-                .status("AGENDADO")
-                .statusPagamento("PAYMENT_PENDING") // Novo atendimento sempre inicia com pagamento pendente
+                .status(StatusAtendimento.AGENDADO)
+                .statusPagamento(StatusPagamento.PAYMENT_PENDING) // Novo atendimento sempre inicia com pagamento pendente
                 .build();
 
         validaTemAssinatura(servico, pacienteId, servicoId, atendimento);
@@ -159,7 +161,7 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
             atendimento.setPctClinicaSnapshot(BigDecimal.ZERO);
             atendimento.setPctProfissionalSnapshot(BigDecimal.ZERO);
             // Manter PAYMENT_PENDING - o pagamento será processado via mensalidade
-            atendimento.setStatusPagamento("PAYMENT_PENDING");
+            atendimento.setStatusPagamento(StatusPagamento.PAYMENT_PENDING);
 
             log.debug("Paciente possui assinatura ativa para este serviço. Atendimento será gratuito (cobrança via mensalidade)");
         } else {

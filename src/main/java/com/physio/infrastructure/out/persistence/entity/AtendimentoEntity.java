@@ -1,6 +1,8 @@
 package com.physio.infrastructure.out.persistence.entity;
 
 import com.physio.domain.model.Recebedor;
+import com.physio.domain.model.StatusAtendimento;
+import com.physio.domain.model.StatusPagamento;
 import com.physio.domain.model.TipoPagamento;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -42,8 +44,9 @@ public class AtendimentoEntity {
     @Column(name = "pct_profissional_snapshot", nullable = false, precision = 5, scale = 2)
     private BigDecimal pctProfissionalSnapshot;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String status;
+    private StatusAtendimento status;
 
     @Column(name = "data_hora_fim")
     private LocalDateTime dataHoraFim;
@@ -59,8 +62,9 @@ public class AtendimentoEntity {
     @Column(name = "tipo_pagamento", length = 25)
     private TipoPagamento tipoPagamento;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status_pagamento", length = 20, nullable = false)
-    private String statusPagamento;
+    private StatusPagamento statusPagamento;
 
     public PacienteEntity getPaciente() {
         return paciente;

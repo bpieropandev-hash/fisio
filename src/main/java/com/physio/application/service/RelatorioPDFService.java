@@ -10,6 +10,7 @@ import com.lowagie.text.pdf.PdfReader;
 import com.lowagie.text.pdf.PdfWriter;
 import com.physio.domain.model.CobrancaMensal;
 import com.physio.domain.model.Recebedor;
+import com.physio.domain.model.StatusAtendimento;
 import com.physio.domain.ports.out.CobrancaMensalRepositoryPort;
 import com.physio.infrastructure.out.persistence.entity.AtendimentoEntity;
 import com.physio.infrastructure.out.persistence.entity.PacienteEntity;
@@ -219,7 +220,7 @@ public class RelatorioPDFService {
                 .orElse(null);
 
         List<AtendimentoEntity> atendimentos = repository.findByPaciente_Id(Math.toIntExact(pacienteId)).stream()
-                .filter(a -> "CONCLUIDO".equalsIgnoreCase(a.getStatus()))
+                .filter(a -> a.getStatus() == StatusAtendimento.CONCLUIDO)
                 .sorted(Comparator.comparing(AtendimentoEntity::getDataHoraInicio))
                 .collect(Collectors.toList());
 
