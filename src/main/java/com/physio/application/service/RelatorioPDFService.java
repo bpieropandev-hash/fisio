@@ -8,14 +8,14 @@ import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfPageEventHelper;
 import com.lowagie.text.pdf.PdfReader;
 import com.lowagie.text.pdf.PdfWriter;
+import com.physio.domain.model.Atendimento;
 import com.physio.domain.model.CobrancaMensal;
+import com.physio.domain.model.Paciente;
 import com.physio.domain.model.Recebedor;
 import com.physio.domain.model.StatusAtendimento;
+import com.physio.domain.ports.out.AtendimentoRepositoryPort;
 import com.physio.domain.ports.out.CobrancaMensalRepositoryPort;
-import com.physio.infrastructure.out.persistence.entity.AtendimentoEntity;
-import com.physio.infrastructure.out.persistence.entity.PacienteEntity;
-import com.physio.infrastructure.out.persistence.repository.AtendimentoJpaRepository;
-import com.physio.infrastructure.out.persistence.repository.PacienteJpaRepository;
+import com.physio.domain.ports.out.PacienteRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -45,9 +45,9 @@ public class RelatorioPDFService {
     private static final Color COR_NEGATIVO = new Color(0xc0, 0x39, 0x2b);
     private static final Color COR_POSITIVO = new Color(0x1e, 0x7a, 0x34);
 
-    private final AtendimentoJpaRepository repository;
+    private final AtendimentoRepositoryPort atendimentoRepositoryPort;
     private final CobrancaMensalRepositoryPort cobrancaMensalRepositoryPort;
-    private final PacienteJpaRepository pacienteRepository;
+    private final PacienteRepositoryPort pacienteRepositoryPort;
 
     @Value("${relatorio.clinica.nome}")
     private String nomeClinica;
@@ -59,7 +59,7 @@ public class RelatorioPDFService {
     private String crefitoProfissional;
 
     public byte[] gerarRelatorioPersonalizado(LocalDateTime inicio, LocalDateTime fim, List<Integer> servicoIds) {
-        List<AtendimentoEntity> atendimentos = repository.findParaRelatorioFinanceiro(inicio, fim, servicoIds)
+        List<Atendimento> atendimentos = atendimentoRepositoryPort.listarParaRelatorioFinanceiro(inicio, fim, servicoIds)
                 .stream()
                 .filter(a -> a.getValorCobrado().compareTo(BigDecimal.ZERO) > 0)
                 .toList();
@@ -86,7 +86,7 @@ public class RelatorioPDFService {
         return construirAcertoFinanceiro(atendimentos, cobrancasMensais, inicio, fim, fmtData, totalPaginas);
     }
 
-    private byte[] construirAcertoFinanceiro(List<AtendimentoEntity> atendimentos, List<CobrancaMensal> cobrancasMensais,
+    private byte[] construirAcertoFinanceiro(List<Atendimento> atendimentos, List<CobrancaMensal> cobrancasMensais,
                                               LocalDateTime inicio, LocalDateTime fim, DateTimeFormatter fmtData,
                                               Integer totalPaginas) {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
@@ -120,7 +120,7 @@ public class RelatorioPDFService {
 
             List<ItemFinanceiro> itensFinanceiros = new ArrayList<>();
 
-            for (AtendimentoEntity a : atendimentos) {
+            for (Atendimento a : atendimentos) {
                 itensFinanceiros.add(new ItemFinanceiro(
                         a.getDataHoraInicio().toLocalDate(),
                         a.getPaciente().getNome(),
@@ -216,12 +216,12 @@ public class RelatorioPDFService {
     }
 
     public byte[] gerarProntuario(Long pacienteId) {
-        PacienteEntity paciente = pacienteRepository.findById(Math.toIntExact(pacienteId))
+        Paciente paciente = pacienteRepositoryPort.buscarPorId(pacienteId)
                 .orElse(null);
 
-        List<AtendimentoEntity> atendimentos = repository.findByPaciente_Id(Math.toIntExact(pacienteId)).stream()
+        List<Atendimento> atendimentos = atendimentoRepositoryPort.listarPorPaciente(pacienteId).stream()
                 .filter(a -> a.getStatus() == StatusAtendimento.CONCLUIDO)
-                .sorted(Comparator.comparing(AtendimentoEntity::getDataHoraInicio))
+                .sorted(Comparator.comparing(Atendimento::getDataHoraInicio))
                 .collect(Collectors.toList());
 
         byte[] rascunho = construirProntuario(paciente, atendimentos, null);
@@ -229,7 +229,7 @@ public class RelatorioPDFService {
         return construirProntuario(paciente, atendimentos, totalPaginas);
     }
 
-    private byte[] construirProntuario(PacienteEntity paciente, List<AtendimentoEntity> atendimentos, Integer totalPaginas) {
+    private byte[] construirProntuario(Paciente paciente, List<Atendimento> atendimentos, Integer totalPaginas) {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Document document = new Document(PageSize.A4, 36, 36, 36, 50);
             PdfWriter writer = PdfWriter.getInstance(document, out);
@@ -254,7 +254,7 @@ public class RelatorioPDFService {
             Font fontRotuloEvolucao = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Color.GRAY);
             Font fontCorpo = FontFactory.getFont(FontFactory.HELVETICA, 11);
 
-            for (AtendimentoEntity a : atendimentos) {
+            for (Atendimento a : atendimentos) {
                 PdfPTable card = new PdfPTable(1);
                 card.setWidthPercentage(100);
                 card.setSpacingBefore(10);
@@ -342,7 +342,7 @@ public class RelatorioPDFService {
         return divisor;
     }
 
-    private PdfPTable criarBlocoPaciente(PacienteEntity paciente) {
+    private PdfPTable criarBlocoPaciente(Paciente paciente) {
         PdfPTable bloco = new PdfPTable(2);
         bloco.setWidthPercentage(100);
         bloco.setWidths(new float[]{1f, 1f});

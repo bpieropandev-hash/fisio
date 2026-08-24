@@ -1,11 +1,11 @@
 package com.physio.application.service;
 
+import com.physio.domain.model.Atendimento;
+import com.physio.domain.model.CobrancaMensal;
+import com.physio.domain.ports.out.AtendimentoRepositoryPort;
+import com.physio.domain.ports.out.CobrancaMensalRepositoryPort;
 import com.physio.infrastructure.in.web.dto.DashboardStatsDTO;
 import com.physio.infrastructure.in.web.dto.PendenciaDTO;
-import com.physio.infrastructure.out.persistence.entity.AtendimentoEntity;
-import com.physio.infrastructure.out.persistence.entity.CobrancaMensalEntity;
-import com.physio.infrastructure.out.persistence.repository.AtendimentoJpaRepository;
-import com.physio.infrastructure.out.persistence.repository.CobrancaMensalJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,8 +23,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class DashboardService {
 
-    private final AtendimentoJpaRepository atendimentoJpaRepository;
-    private final CobrancaMensalJpaRepository cobrancaMensalJpaRepository;
+    private final AtendimentoRepositoryPort atendimentoRepositoryPort;
+    private final CobrancaMensalRepositoryPort cobrancaMensalRepositoryPort;
 
     /**
      * Gera as estatísticas do dashboard para o mês atual (comportamento padrão).
@@ -60,12 +60,12 @@ public class DashboardService {
         LocalDateTime fimDt = fim.plusDays(1).atStartOfDay();
 
         // A. Total de Atendimentos Concluídos
-        Long totalAtendimentos = atendimentoJpaRepository.countConcluidosPorMes(inicioDt, fimDt);
+        Long totalAtendimentos = atendimentoRepositoryPort.contarConcluidosPorMes(inicioDt, fimDt);
         log.debug("Total de atendimentos concluídos: {}", totalAtendimentos);
 
         // B. Atendimentos com Pagamento Pendente (apenas avulsos)
-        Long atendimentosPagamentoPendente = atendimentoJpaRepository
-                .countConcluidosComPagamentoPendentePorMes(inicioDt, fimDt);
+        Long atendimentosPagamentoPendente = atendimentoRepositoryPort
+                .contarConcluidosComPagamentoPendentePorMes(inicioDt, fimDt);
         log.debug("Atendimentos com pagamento pendente: {}", atendimentosPagamentoPendente);
 
         // C. Faturamento da Profissional
@@ -95,12 +95,12 @@ public class DashboardService {
         // P2.3: soma em banco (SUM) em vez de carregar as entidades pra somar em Java.
 
         // 1. Atendimentos Avulsos (Status CONCLUIDO, Valor > 0 e StatusPagamento = PAID)
-        BigDecimal totalAvulsos = atendimentoJpaRepository
+        BigDecimal totalAvulsos = atendimentoRepositoryPort
                 .somarFaturamentoProfissionalAvulsos(inicioDt, fimDt);
         log.debug("Faturamento de atendimentos avulsos pagos: R$ {}", totalAvulsos);
 
         // 2. Cobranças Mensais Pagas cujo mês/ano de referência está dentro do período
-        BigDecimal totalMensalidades = cobrancaMensalJpaRepository
+        BigDecimal totalMensalidades = cobrancaMensalRepositoryPort
                 .somarValorProfissionalPagoPorPeriodo(inicio.getYear(), inicio.getMonthValue(),
                         fim.getYear(), fim.getMonthValue());
         log.debug("Faturamento de mensalidades: R$ {}", totalMensalidades);
@@ -120,10 +120,10 @@ public class DashboardService {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
         // 1. Pacientes com cobranças mensais pendentes vencidas até o fim do período (ASSINATURA)
-        List<CobrancaMensalEntity> cobrancasPendentes = cobrancaMensalJpaRepository
-                .findPendentesVencidas(fim.getYear(), fim.getMonthValue());
+        List<CobrancaMensal> cobrancasPendentes = cobrancaMensalRepositoryPort
+                .buscarPendentesVencidas(fim.getYear(), fim.getMonthValue());
 
-        for (CobrancaMensalEntity cobranca : cobrancasPendentes) {
+        for (CobrancaMensal cobranca : cobrancasPendentes) {
             String nomePaciente = cobranca.getAssinatura().getPaciente().getNome();
             String descricao = String.format("Mensalidade %02d/%04d - Valor: R$ %.2f",
                     cobranca.getMesReferencia(),
@@ -138,10 +138,10 @@ public class DashboardService {
         }
 
         // 2. Pacientes com atendimentos avulsos concluídos mas não pagos, dentro do período (ATENDIMENTO_AVULSO)
-        List<AtendimentoEntity> atendimentosPendentes = atendimentoJpaRepository
-                .findConcluidosComPagamentoPendente();
+        List<Atendimento> atendimentosPendentes = atendimentoRepositoryPort
+                .listarConcluidosComPagamentoPendente();
 
-        for (AtendimentoEntity atendimento : atendimentosPendentes) {
+        for (Atendimento atendimento : atendimentosPendentes) {
             LocalDateTime dataAtendimento = atendimento.getDataHoraInicio();
             // Filtra pelo período selecionado (a query não tem recorte de data)
             if (dataAtendimento.isBefore(inicioDt) || !dataAtendimento.isBefore(fimDt)) {
@@ -166,4 +166,3 @@ public class DashboardService {
                 .collect(Collectors.toList());
     }
 }
-

@@ -1,8 +1,8 @@
 package com.physio.application.service;
 
+import com.physio.domain.ports.out.AtendimentoRepositoryPort;
+import com.physio.domain.ports.out.CobrancaMensalRepositoryPort;
 import com.physio.infrastructure.in.web.dto.DashboardStatsDTO;
-import com.physio.infrastructure.out.persistence.repository.AtendimentoJpaRepository;
-import com.physio.infrastructure.out.persistence.repository.CobrancaMensalJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,10 +24,10 @@ import static org.mockito.Mockito.when;
 class DashboardServiceTest {
 
     @Mock
-    private AtendimentoJpaRepository atendimentoJpaRepository;
+    private AtendimentoRepositoryPort atendimentoRepositoryPort;
 
     @Mock
-    private CobrancaMensalJpaRepository cobrancaMensalJpaRepository;
+    private CobrancaMensalRepositoryPort cobrancaMensalRepositoryPort;
 
     private DashboardService dashboardService;
 
@@ -36,14 +36,14 @@ class DashboardServiceTest {
 
     @BeforeEach
     void setUp() {
-        dashboardService = new DashboardService(atendimentoJpaRepository, cobrancaMensalJpaRepository);
+        dashboardService = new DashboardService(atendimentoRepositoryPort, cobrancaMensalRepositoryPort);
 
-        lenient().when(atendimentoJpaRepository.countConcluidosPorMes(any(), any())).thenReturn(0L);
-        lenient().when(atendimentoJpaRepository.countConcluidosComPagamentoPendentePorMes(any(), any())).thenReturn(0L);
-        lenient().when(atendimentoJpaRepository.somarFaturamentoProfissionalAvulsos(any(), any())).thenReturn(BigDecimal.ZERO);
-        lenient().when(atendimentoJpaRepository.findConcluidosComPagamentoPendente()).thenReturn(Collections.emptyList());
-        lenient().when(cobrancaMensalJpaRepository.somarValorProfissionalPagoPorPeriodo(anyInt(), anyInt(), anyInt(), anyInt())).thenReturn(BigDecimal.ZERO);
-        lenient().when(cobrancaMensalJpaRepository.findPendentesVencidas(anyInt(), anyInt())).thenReturn(Collections.emptyList());
+        lenient().when(atendimentoRepositoryPort.contarConcluidosPorMes(any(), any())).thenReturn(0L);
+        lenient().when(atendimentoRepositoryPort.contarConcluidosComPagamentoPendentePorMes(any(), any())).thenReturn(0L);
+        lenient().when(atendimentoRepositoryPort.somarFaturamentoProfissionalAvulsos(any(), any())).thenReturn(BigDecimal.ZERO);
+        lenient().when(atendimentoRepositoryPort.listarConcluidosComPagamentoPendente()).thenReturn(Collections.emptyList());
+        lenient().when(cobrancaMensalRepositoryPort.somarValorProfissionalPagoPorPeriodo(anyInt(), anyInt(), anyInt(), anyInt())).thenReturn(BigDecimal.ZERO);
+        lenient().when(cobrancaMensalRepositoryPort.buscarPendentesVencidas(anyInt(), anyInt())).thenReturn(Collections.emptyList());
     }
 
     @Test
@@ -57,7 +57,7 @@ class DashboardServiceTest {
         // A soma de PAID vs PAYMENT_PENDING agora é filtrada em SQL (P2.3) — o unit test
         // verifica só a soma vinda das duas fontes; a filtragem correta em si é coberta
         // pelo teste de integração (P1.2.3, AtendimentoJpaRepositoryIT).
-        when(atendimentoJpaRepository.somarFaturamentoProfissionalAvulsos(any(), any()))
+        when(atendimentoRepositoryPort.somarFaturamentoProfissionalAvulsos(any(), any()))
                 .thenReturn(new BigDecimal("80.00"));
 
         DashboardStatsDTO stats = dashboardService.obterResumo(inicio, fim);
@@ -67,7 +67,7 @@ class DashboardServiceTest {
 
     @Test
     void deveSomarFaturamentoDeCobrancasMensais() {
-        when(cobrancaMensalJpaRepository.somarValorProfissionalPagoPorPeriodo(anyInt(), anyInt(), anyInt(), anyInt()))
+        when(cobrancaMensalRepositoryPort.somarValorProfissionalPagoPorPeriodo(anyInt(), anyInt(), anyInt(), anyInt()))
                 .thenReturn(new BigDecimal("126.00"));
 
         DashboardStatsDTO stats = dashboardService.obterResumo(inicio, fim);
@@ -77,9 +77,9 @@ class DashboardServiceTest {
 
     @Test
     void deveSomarAvulsosECobrancasNoMesmoPeriodo() {
-        when(atendimentoJpaRepository.somarFaturamentoProfissionalAvulsos(any(), any()))
+        when(atendimentoRepositoryPort.somarFaturamentoProfissionalAvulsos(any(), any()))
                 .thenReturn(new BigDecimal("80.00"));
-        when(cobrancaMensalJpaRepository.somarValorProfissionalPagoPorPeriodo(anyInt(), anyInt(), anyInt(), anyInt()))
+        when(cobrancaMensalRepositoryPort.somarValorProfissionalPagoPorPeriodo(anyInt(), anyInt(), anyInt(), anyInt()))
                 .thenReturn(new BigDecimal("126.00"));
 
         DashboardStatsDTO stats = dashboardService.obterResumo(inicio, fim);

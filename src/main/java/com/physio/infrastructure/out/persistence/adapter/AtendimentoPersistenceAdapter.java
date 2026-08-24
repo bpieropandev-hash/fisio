@@ -10,6 +10,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -75,6 +76,37 @@ public class AtendimentoPersistenceAdapter implements AtendimentoRepositoryPort 
     @Override
     public List<Atendimento> listarPorPaciente(Long pacienteId) {
         return jpaRepository.findByPaciente_Id(pacienteId.intValue())
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Atendimento> listarParaRelatorioFinanceiro(LocalDateTime inicio, LocalDateTime fim, List<Integer> servicoIds) {
+        return jpaRepository.findParaRelatorioFinanceiro(inicio, fim, servicoIds)
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public Long contarConcluidosPorMes(LocalDateTime inicio, LocalDateTime fim) {
+        return jpaRepository.countConcluidosPorMes(inicio, fim);
+    }
+
+    @Override
+    public Long contarConcluidosComPagamentoPendentePorMes(LocalDateTime inicio, LocalDateTime fim) {
+        return jpaRepository.countConcluidosComPagamentoPendentePorMes(inicio, fim);
+    }
+
+    @Override
+    public BigDecimal somarFaturamentoProfissionalAvulsos(LocalDateTime inicio, LocalDateTime fim) {
+        return jpaRepository.somarFaturamentoProfissionalAvulsos(inicio, fim);
+    }
+
+    @Override
+    public List<Atendimento> listarConcluidosComPagamentoPendente() {
+        return jpaRepository.findConcluidosComPagamentoPendente()
                 .stream()
                 .map(mapper::toDomain)
                 .toList();

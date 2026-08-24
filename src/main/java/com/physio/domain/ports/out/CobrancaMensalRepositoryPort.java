@@ -4,6 +4,7 @@ import com.physio.domain.model.CobrancaMensal;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -28,5 +29,9 @@ public interface CobrancaMensalRepositoryPort {
 
     // IDs das assinaturas que já têm cobrança gerada num mês/ano, numa query só (P2.4 — evita N+1)
     Set<Integer> buscarAssinaturaIdsComCobranca(Integer mes, Integer ano);
+
+    // Usados pelo dashboard (P2.2/P2.3)
+    BigDecimal somarValorProfissionalPagoPorPeriodo(Integer anoInicio, Integer mesInicio, Integer anoFim, Integer mesFim);
+    List<CobrancaMensal> buscarPendentesVencidas(Integer anoAtual, Integer mesAtual);
 }
 

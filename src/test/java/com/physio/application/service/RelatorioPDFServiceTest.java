@@ -1,15 +1,15 @@
 package com.physio.application.service;
 
+import com.physio.domain.model.Atendimento;
+import com.physio.domain.model.Paciente;
 import com.physio.domain.model.Recebedor;
+import com.physio.domain.model.ServicoConfig;
 import com.physio.domain.model.StatusAtendimento;
 import com.physio.domain.model.StatusPagamento;
 import com.physio.domain.model.TipoPagamento;
+import com.physio.domain.ports.out.AtendimentoRepositoryPort;
 import com.physio.domain.ports.out.CobrancaMensalRepositoryPort;
-import com.physio.infrastructure.out.persistence.entity.AtendimentoEntity;
-import com.physio.infrastructure.out.persistence.entity.PacienteEntity;
-import com.physio.infrastructure.out.persistence.entity.ServicoConfigEntity;
-import com.physio.infrastructure.out.persistence.repository.AtendimentoJpaRepository;
-import com.physio.infrastructure.out.persistence.repository.PacienteJpaRepository;
+import com.physio.domain.ports.out.PacienteRepositoryPort;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -25,65 +25,67 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class RelatorioPDFServiceTest {
 
     @Mock
-    private AtendimentoJpaRepository atendimentoJpaRepository;
+    private AtendimentoRepositoryPort atendimentoRepositoryPort;
 
     @Mock
     private CobrancaMensalRepositoryPort cobrancaMensalRepositoryPort;
 
     @Mock
-    private PacienteJpaRepository pacienteJpaRepository;
+    private PacienteRepositoryPort pacienteRepositoryPort;
 
     private RelatorioPDFService criarService() {
         RelatorioPDFService service = new RelatorioPDFService(
-                atendimentoJpaRepository, cobrancaMensalRepositoryPort, pacienteJpaRepository);
+                atendimentoRepositoryPort, cobrancaMensalRepositoryPort, pacienteRepositoryPort);
         ReflectionTestUtils.setField(service, "nomeClinica", "Clínica Teste Fisioterapia");
         ReflectionTestUtils.setField(service, "nomeProfissional", "Dra. Fulana de Tal");
         ReflectionTestUtils.setField(service, "crefitoProfissional", "12345-F");
         return service;
     }
 
-    private PacienteEntity criarPaciente() {
-        PacienteEntity paciente = new PacienteEntity();
-        paciente.setId(1);
-        paciente.setNome("Maria da Silva");
-        paciente.setDataNascimento(LocalDate.of(1990, 5, 20));
-        paciente.setCpf("12345678900");
-        paciente.setTelefone("(11) 99999-0000");
-        return paciente;
+    private Paciente criarPaciente() {
+        return Paciente.builder()
+                .id(1)
+                .nome("Maria da Silva")
+                .dataNascimento(LocalDate.of(1990, 5, 20))
+                .cpf("12345678900")
+                .telefone("(11) 99999-0000")
+                .build();
     }
 
-    private ServicoConfigEntity criarServico(String nome) {
-        ServicoConfigEntity servico = new ServicoConfigEntity();
-        servico.setId(1);
-        servico.setNome(nome);
-        return servico;
+    private ServicoConfig criarServico(String nome) {
+        return ServicoConfig.builder()
+                .id(1)
+                .nome(nome)
+                .build();
     }
 
     @Test
     void gerarRelatorioPersonalizado_geraPdfNaoVazioComItens() {
-        PacienteEntity paciente = criarPaciente();
-        ServicoConfigEntity servico = criarServico("Pilates");
+        Paciente paciente = criarPaciente();
+        ServicoConfig servico = criarServico("Pilates");
 
-        AtendimentoEntity atendimento = new AtendimentoEntity();
-        atendimento.setId(1);
-        atendimento.setPaciente(paciente);
-        atendimento.setServicoBase(servico);
-        atendimento.setDataHoraInicio(LocalDateTime.of(2026, 7, 5, 10, 0));
-        atendimento.setValorCobrado(new BigDecimal("150.00"));
-        atendimento.setPctClinicaSnapshot(new BigDecimal("30"));
-        atendimento.setPctProfissionalSnapshot(new BigDecimal("70"));
-        atendimento.setStatus(StatusAtendimento.CONCLUIDO);
-        atendimento.setRecebedor(Recebedor.CLINICA);
-        atendimento.setTipoPagamento(TipoPagamento.PIX);
-        atendimento.setStatusPagamento(StatusPagamento.PAID);
+        Atendimento atendimento = Atendimento.builder()
+                .id(1)
+                .paciente(paciente)
+                .servicoBase(servico)
+                .dataHoraInicio(LocalDateTime.of(2026, 7, 5, 10, 0))
+                .valorCobrado(new BigDecimal("150.00"))
+                .pctClinicaSnapshot(new BigDecimal("30"))
+                .pctProfissionalSnapshot(new BigDecimal("70"))
+                .status(StatusAtendimento.CONCLUIDO)
+                .recebedor(Recebedor.CLINICA)
+                .tipoPagamento(TipoPagamento.PIX)
+                .statusPagamento(StatusPagamento.PAID)
+                .build();
 
-        when(atendimentoJpaRepository.findParaRelatorioFinanceiro(any(), any(), any()))
+        when(atendimentoRepositoryPort.listarParaRelatorioFinanceiro(any(), any(), any()))
                 .thenReturn(List.of(atendimento));
         when(cobrancaMensalRepositoryPort.buscarPagasPorPeriodo(anyInt(), anyInt(), anyInt(), anyInt()))
                 .thenReturn(List.of());
@@ -102,23 +104,24 @@ class RelatorioPDFServiceTest {
 
     @Test
     void gerarProntuario_geraPdfNaoVazioComEvolucoes() {
-        PacienteEntity paciente = criarPaciente();
-        ServicoConfigEntity servico = criarServico("Fisioterapia");
+        Paciente paciente = criarPaciente();
+        ServicoConfig servico = criarServico("Fisioterapia");
 
-        AtendimentoEntity atendimento = new AtendimentoEntity();
-        atendimento.setId(2);
-        atendimento.setPaciente(paciente);
-        atendimento.setServicoBase(servico);
-        atendimento.setDataHoraInicio(LocalDateTime.of(2026, 7, 3, 14, 30));
-        atendimento.setValorCobrado(BigDecimal.ZERO);
-        atendimento.setPctClinicaSnapshot(new BigDecimal("30"));
-        atendimento.setPctProfissionalSnapshot(new BigDecimal("70"));
-        atendimento.setStatus(StatusAtendimento.CONCLUIDO);
-        atendimento.setStatusPagamento(StatusPagamento.PAYMENT_PENDING);
-        atendimento.setEvolucao("Paciente evoluiu bem, sem queixas de dor. Manteve o protocolo.");
+        Atendimento atendimento = Atendimento.builder()
+                .id(2)
+                .paciente(paciente)
+                .servicoBase(servico)
+                .dataHoraInicio(LocalDateTime.of(2026, 7, 3, 14, 30))
+                .valorCobrado(BigDecimal.ZERO)
+                .pctClinicaSnapshot(new BigDecimal("30"))
+                .pctProfissionalSnapshot(new BigDecimal("70"))
+                .status(StatusAtendimento.CONCLUIDO)
+                .statusPagamento(StatusPagamento.PAYMENT_PENDING)
+                .evolucao("Paciente evoluiu bem, sem queixas de dor. Manteve o protocolo.")
+                .build();
 
-        when(pacienteJpaRepository.findById(1)).thenReturn(Optional.of(paciente));
-        when(atendimentoJpaRepository.findByPaciente_Id(1)).thenReturn(List.of(atendimento));
+        when(pacienteRepositoryPort.buscarPorId(1L)).thenReturn(Optional.of(paciente));
+        when(atendimentoRepositoryPort.listarPorPaciente(anyLong())).thenReturn(List.of(atendimento));
 
         RelatorioPDFService service = criarService();
         byte[] pdf = service.gerarProntuario(1L);

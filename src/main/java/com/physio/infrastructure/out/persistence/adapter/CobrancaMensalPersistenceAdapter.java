@@ -80,5 +80,17 @@ public class CobrancaMensalPersistenceAdapter implements CobrancaMensalRepositor
     public Set<Integer> buscarAssinaturaIdsComCobranca(Integer mes, Integer ano) {
         return jpaRepository.buscarAssinaturaIdsComCobranca(mes, ano);
     }
+
+    @Override
+    public java.math.BigDecimal somarValorProfissionalPagoPorPeriodo(Integer anoInicio, Integer mesInicio, Integer anoFim, Integer mesFim) {
+        return jpaRepository.somarValorProfissionalPagoPorPeriodo(anoInicio, mesInicio, anoFim, mesFim);
+    }
+
+    @Override
+    public List<CobrancaMensal> buscarPendentesVencidas(Integer anoAtual, Integer mesAtual) {
+        return jpaRepository.findPendentesVencidas(anoAtual, mesAtual).stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
 }
 
