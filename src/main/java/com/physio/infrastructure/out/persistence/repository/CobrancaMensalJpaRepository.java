@@ -2,6 +2,8 @@ package com.physio.infrastructure.out.persistence.repository;
 
 import com.physio.domain.model.StatusCobranca;
 import com.physio.infrastructure.out.persistence.entity.CobrancaMensalEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,11 +15,22 @@ import java.util.Optional;
 @Repository
 public interface CobrancaMensalJpaRepository extends JpaRepository<CobrancaMensalEntity, Integer> {
 
-    // Verificar se já existe cobrança para uma assinatura em um mês/ano específico
+    // Verificar se já existe cobrança para uma assinatura em um mês/ano específico.
+    // JOIN FETCH obrigatório: GeradorCobrancaService chama isso via @Scheduled/boot,
+    // sem sessão aberta por open-in-view (só existe em request HTTP) — o mapper mapeia
+    // a assinatura inteira (incl. paciente/servico) mesmo quando o chamador só quer
+    // checar existência, então sem fetch explode com LazyInitializationException.
+    @Query("SELECT c FROM CobrancaMensalEntity c " +
+           "JOIN FETCH c.assinatura a " +
+           "JOIN FETCH a.paciente " +
+           "JOIN FETCH a.servico " +
+           "WHERE a.id = :assinaturaId " +
+           "AND c.mesReferencia = :mesReferencia " +
+           "AND c.anoReferencia = :anoReferencia")
     Optional<CobrancaMensalEntity> findByAssinatura_IdAndMesReferenciaAndAnoReferencia(
-            Integer assinaturaId,
-            Integer mesReferencia,
-            Integer anoReferencia
+            @Param("assinaturaId") Integer assinaturaId,
+            @Param("mesReferencia") Integer mesReferencia,
+            @Param("anoReferencia") Integer anoReferencia
     );
 
     // Buscar cobranças pagas para relatório financeiro
@@ -60,17 +73,24 @@ public interface CobrancaMensalJpaRepository extends JpaRepository<CobrancaMensa
             @Param("mes") Integer mes
     );
 
-    // Listar cobranças com filtro opcional por mês/ano (JOIN FETCH evita N+1 ao montar a descrição)
-    @Query("SELECT c FROM CobrancaMensalEntity c " +
+    // Listar cobranças com filtro opcional por mês/ano, paginado (P1.3).
+    // JOIN FETCH evita N+1 ao montar a descrição; são associações @ManyToOne (to-one),
+    // então não multiplicam linhas e a paginação em banco funciona normalmente
+    // (diferente de JOIN FETCH em coleções, que o Spring Data pagina em memória).
+    // Ordenação vem do Pageable (adapter passa Sort explícito) em vez de fixa na query.
+    @Query(value = "SELECT c FROM CobrancaMensalEntity c " +
            "JOIN FETCH c.assinatura a " +
            "JOIN FETCH a.paciente " +
            "JOIN FETCH a.servico " +
            "WHERE (:mes IS NULL OR c.mesReferencia = :mes) " +
-           "AND (:ano IS NULL OR c.anoReferencia = :ano) " +
-           "ORDER BY c.anoReferencia DESC, c.mesReferencia DESC, c.id ASC")
-    List<CobrancaMensalEntity> findByMesAnoOpcional(
+           "AND (:ano IS NULL OR c.anoReferencia = :ano)",
+           countQuery = "SELECT count(c) FROM CobrancaMensalEntity c " +
+           "WHERE (:mes IS NULL OR c.mesReferencia = :mes) " +
+           "AND (:ano IS NULL OR c.anoReferencia = :ano)")
+    Page<CobrancaMensalEntity> findByMesAnoOpcional(
             @Param("mes") Integer mes,
-            @Param("ano") Integer ano
+            @Param("ano") Integer ano,
+            Pageable pageable
     );
 
     // Buscar cobranças pendentes vencidas (mês atual ou anteriores) para alertas

@@ -22,7 +22,15 @@ public interface AssinaturaJpaRepository extends JpaRepository<AssinaturaEntity,
             @Param("servicoId") Integer servicoId
     );
 
-    // Buscar todas as assinaturas ativas
+    // Buscar todas as assinaturas ativas. JOIN FETCH é obrigatório aqui (não opcional
+    // como em endpoints web com open-in-view): quem chama isso é GeradorCobrancaService,
+    // acionado por @Scheduled/ApplicationReadyEvent — sem request HTTP, então sem sessão
+    // aberta por open-in-view. Sem o fetch, acessar assinatura.paciente/servico fora do
+    // repositório explode com LazyInitializationException (achado rodando o catch-up no boot).
+    @Query("SELECT a FROM AssinaturaEntity a " +
+           "JOIN FETCH a.paciente " +
+           "JOIN FETCH a.servico " +
+           "WHERE a.ativo = true")
     List<AssinaturaEntity> findByAtivoTrue();
 
     // Buscar assinaturas de um paciente
