@@ -1,0 +1,42 @@
+package com.physio.application.service;
+
+import com.physio.domain.model.*;
+import com.physio.domain.ports.out.*;
+import com.physio.infrastructure.out.persistence.repository.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+import java.time.*;
+import java.math.BigDecimal;
+import java.util.*;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+import static com.physio.application.service.RemarcacaoContrato.*;
+
+class RemarcacaoServiceTest {
+ final AtendimentoRepositoryPort agenda=mock(AtendimentoRepositoryPort.class);
+ final ServicoRepositoryPort servicos=mock(ServicoRepositoryPort.class);
+ final AssinaturaRepositoryPort assinaturas=mock(AssinaturaRepositoryPort.class);
+ final ReciboJpaRepository recibos=mock(ReciboJpaRepository.class);
+ final RemarcacaoRepository operacoes=mock(RemarcacaoRepository.class);
+ final ObjectMapper json=new ObjectMapper().findAndRegisterModules();
+ final RemarcacaoService service=new RemarcacaoService(agenda,servicos,assinaturas,recibos,operacoes,json);
+ final LocalDate dia=LocalDate.now(ZoneId.of("America/Sao_Paulo")).plusDays(5);
+ final ServicoConfig servico=ServicoConfig.builder().id(1).capacidade(2).valorBase(new BigDecimal("100")).pctClinica(new BigDecimal("40")).pctProfissional(new BigDecimal("60")).build();
+ Atendimento origem(int id) { return Atendimento.builder().id(id).paciente(Paciente.builder().id(1).build()).servicoBase(servico).dataHoraInicio(dia.atTime(15,0)).dataHoraFim(dia.atTime(16,30)).status(StatusAtendimento.AGENDADO).statusPagamento(StatusPagamento.PAYMENT_PENDING).valorCobrado(new BigDecimal("70")).pctClinicaSnapshot(new BigDecimal("25")).pctProfissionalSnapshot(new BigDecimal("75")).build(); }
+ Pedido pedido(List<Integer> ids) { return new Pedido(1L,1L,ids,dia,dia,Modo.MANTER_DATAS,LocalTime.of(16,0),List.of(),"Mudança de disponibilidade"); }
+ void preparar(Atendimento a) { when(agenda.buscarPorId(1L)).thenReturn(a); when(servicos.buscarPorIdEAtivo(1L)).thenReturn(Optional.of(servico)); when(agenda.listarConflitosPorPeriodo(any(),any())).thenReturn(List.of(a)); when(operacoes.save(any())).thenAnswer(i->i.getArgument(0)); }
+ @Test void mudaHoraPreservandoDuracaoESnapshotEId() { var a=origem(1); preparar(a); var previa=service.prever(pedido(List.of(1)),"ana"); assertEquals(dia.atTime(17,30),previa.destinos().getFirst().fim()); assertEquals(new BigDecimal("70"),previa.destinos().getFirst().valor()); assertEquals(1,previa.destinos().getFirst().origemId()); verify(agenda,never()).salvar(any()); }
+ @Test void protegePagamentoEEvolucao() { var a=origem(1); a.setStatusPagamento(StatusPagamento.PAID); preparar(a); var p=service.prever(pedido(List.of(1)),"ana"); assertEquals(1,p.protegidos()); assertTrue(p.destinos().isEmpty()); }
+ @Test void rejeitaIdsDeOutroPaciente() { var a=origem(1); a.getPaciente().setId(2); preparar(a); assertThrows(IllegalArgumentException.class,()->service.prever(pedido(List.of(1)),"ana")); }
+ @Test void rejeitaSelecaoDuplicada() { assertThrows(IllegalArgumentException.class,()->service.prever(pedido(List.of(1,1)),"ana")); }
+ @Test void rejeitaPeriodoMaior366Dias() { var p=pedido(List.of(1)); assertThrows(IllegalArgumentException.class,()->service.prever(new Pedido(1L,1L,p.origemIds(),dia,dia.plusDays(366),p.modo(),p.horario(),List.of(),p.motivo()),"ana")); }
+ @Test void confirmaPreservaCamposERepeticaoNaoSalvaOutraVez() { var a=origem(1); preparar(a);when(agenda.salvar(any())).thenAnswer(i->i.getArgument(0));var previa=service.prever(pedido(List.of(1)),"ana");var captor=org.mockito.ArgumentCaptor.forClass(com.physio.infrastructure.out.persistence.entity.RemarcacaoEntity.class);verify(operacoes).save(captor.capture());when(operacoes.findById(previa.operacaoId())).thenReturn(Optional.of(captor.getValue()));var resultado=service.confirmar(previa.operacaoId(),"ana");assertEquals(List.of(1),resultado.destinoIds());assertEquals(new BigDecimal("25"),a.getPctClinicaSnapshot());assertEquals(dia.atTime(17,30),a.getDataHoraFim());assertEquals(resultado,service.confirmar(previa.operacaoId(),"ana"));verify(agenda,times(1)).salvar(any()); }
+ @Test void agendaAlteradaExigeNovaPreviaSemSalvar() {var a=origem(1);preparar(a);var p=service.prever(pedido(List.of(1)),"ana");var captor=org.mockito.ArgumentCaptor.forClass(com.physio.infrastructure.out.persistence.entity.RemarcacaoEntity.class);verify(operacoes).save(captor.capture());when(operacoes.findById(p.operacaoId())).thenReturn(Optional.of(captor.getValue()));a.setEvolucao("Evolução nova");assertThrows(IllegalArgumentException.class,()->service.confirmar(p.operacaoId(),"ana"));verify(agenda,never()).salvar(any());}
+ @Test void protegidoContinuaOcupandoECausaConflito(){var a=origem(1);var protegido=origem(2);protegido.setStatusPagamento(StatusPagamento.PAID);protegido.setDataHoraInicio(dia.atTime(16,0));protegido.setDataHoraFim(dia.atTime(17,0));preparar(a);when(agenda.buscarPorId(2L)).thenReturn(protegido);when(agenda.listarConflitosPorPeriodo(any(),any())).thenReturn(List.of(a,protegido));var p=service.prever(pedido(List.of(1,2)),"ana");assertEquals(1,p.protegidos());assertFalse(p.conflitos().isEmpty());}
+ @Test void substituirDiasCriaCoberturaAtualECancelaOrigem(){var a=origem(1);preparar(a);when(agenda.salvar(any())).thenAnswer(i->{Atendimento x=i.getArgument(0);if(x.getId()==null)x.setId(20);return x;});var r=new Pedido(1L,1L,List.of(1),dia,dia.plusDays(6),Modo.SUBSTITUIR_DIAS,LocalTime.of(18,0),List.of(2,3),"Troca de dias");var p=service.prever(r,"ana");assertEquals(2,p.criados());assertEquals(1,p.adicionais());assertEquals(2,p.novasAvulsas());var cap=org.mockito.ArgumentCaptor.forClass(com.physio.infrastructure.out.persistence.entity.RemarcacaoEntity.class);verify(operacoes).save(cap.capture());when(operacoes.findById(p.operacaoId())).thenReturn(Optional.of(cap.getValue()));service.confirmar(p.operacaoId(),"ana");assertEquals(StatusAtendimento.CANCELADO,a.getStatus());verify(agenda,times(3)).salvar(any());}
+ @Test void mensalistaForaVigenciaNaoViraAvulso(){var a=origem(1);a.setAssinaturaId(5);a.setModalidadeCobranca(ModalidadeCobranca.MENSALIDADE);preparar(a);var assinatura=Assinatura.builder().id(5).dataInicio(dia.minusDays(10)).dataCancelamento(dia.atTime(17,0)).ativo(true).build();when(assinaturas.buscarPorId(5L)).thenReturn(Optional.of(assinatura));var r=new Pedido(1L,1L,List.of(1),dia,dia.plusDays(6),Modo.SUBSTITUIR_DIAS,LocalTime.of(18,0),List.of(dia.getDayOfWeek().getValue()),"Troca de horário");var p=service.prever(r,"ana");assertFalse(p.conflitos().isEmpty());}
+ @Test void reciboEEvolucaoEstruturadaProtegemMesmoStatusAgendado(){var a=origem(1);preparar(a);when(recibos.findByAtendimentoId(1)).thenReturn(Optional.of(new com.physio.infrastructure.out.persistence.entity.ReciboEntity()));when(agenda.possuiEvolucaoEstruturada(1L)).thenReturn(true);var p=service.prever(pedido(List.of(1)),"ana");assertEquals(1,p.protegidos());assertTrue(p.origens().getFirst().protecao().contains("Recibo"));assertTrue(p.origens().getFirst().protecao().contains("Evolução"));}
+ @Test void capacidadePermiteOutroPacienteMesmoServico(){var a=origem(1);preparar(a);var outro=origem(2);outro.setPaciente(Paciente.builder().id(2).build());outro.setDataHoraInicio(dia.atTime(16,0));outro.setDataHoraFim(dia.atTime(17,0));when(agenda.listarConflitosPorPeriodo(any(),any())).thenReturn(List.of(a,outro));assertTrue(service.prever(pedido(List.of(1)),"ana").conflitos().isEmpty());servico.setCapacidade(1);assertFalse(service.prever(pedido(List.of(1)),"ana").conflitos().isEmpty());}
+ @Test void novaMensalidadeUsaCoberturaVigenteESnapshotZero(){var a=origem(1);preparar(a);when(assinaturas.buscarAtivaPorPacienteEServico(1L,1L)).thenReturn(Optional.of(Assinatura.builder().id(8).dataInicio(dia.minusDays(1)).ativo(true).build()));var p=service.prever(new Pedido(1L,1L,List.of(1),dia,dia.plusDays(6),Modo.SUBSTITUIR_DIAS,LocalTime.of(18,0),List.of(2,3),"Novos dias"),"ana");assertEquals(0,p.novasAvulsas());assertEquals("MENSALIDADE",p.destinos().getFirst().modalidade());assertEquals(BigDecimal.ZERO,p.destinos().getFirst().valor());}
+ @Test void candidatosNaoDependemListagemGeralComTeto(){var lista=java.util.stream.IntStream.rangeClosed(1,5001).mapToObj(this::origem).toList();when(agenda.candidatosRemarcacao(eq(1L),eq(1L),any(),any())).thenReturn(lista);assertEquals(5001,service.candidatos(1L,1L,dia,dia).size());verify(agenda,never()).listarTodos();}
+}

@@ -17,6 +17,9 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 public class AtendimentoPersistenceAdapter implements AtendimentoRepositoryPort {
+    @Override public List<Atendimento> candidatosRemarcacao(Long pacienteId, Long servicoId, LocalDateTime inicio, LocalDateTime fim) {
+        return jpaRepository.candidatosRemarcacao(pacienteId, servicoId, inicio, fim).stream().map(mapper::toDomain).toList();
+    }
 
     private final AtendimentoJpaRepository jpaRepository;
     private final AtendimentoMapper mapper;

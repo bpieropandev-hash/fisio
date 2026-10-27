@@ -6,6 +6,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface AtendimentoRepositoryPort {
+    default List<Atendimento> candidatosRemarcacao(Long pacienteId, Long servicoId, LocalDateTime inicio, LocalDateTime fim) {
+        return listarPorPaciente(pacienteId).stream().filter(a -> a.getServicoBase().getId().longValue() == servicoId && !a.getDataHoraInicio().isBefore(inicio) && a.getDataHoraInicio().isBefore(fim)).toList();
+    }
     default void bloquearAgenda() {}
     default void bloquearAtendimento(Long id) {}
     default boolean possuiEvolucaoEstruturada(Long id) { return false; }

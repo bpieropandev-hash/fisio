@@ -13,6 +13,8 @@ import java.util.List;
 @Repository
 // Mudei Long para Integer aqui pois sua Entity usa Integer no ID
 public interface AtendimentoJpaRepository extends JpaRepository<AtendimentoEntity, Integer> {
+    @Query("SELECT a FROM AtendimentoEntity a WHERE a.paciente.id = :paciente AND a.servicoBase.id = :servico AND a.dataHoraInicio >= :inicio AND a.dataHoraInicio < :fim ORDER BY a.dataHoraInicio, a.id")
+    List<AtendimentoEntity> candidatosRemarcacao(@Param("paciente") Long paciente, @Param("servico") Long servico, @Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
 
     // Busca para a Agenda e Financeiro
     List<AtendimentoEntity> findByDataHoraInicioBetween(LocalDateTime inicio, LocalDateTime fim);
