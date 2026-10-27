@@ -272,6 +272,59 @@ class ApiGestaoClinicaIT {
         assertThat(ok(HttpMethod.GET, "/api/v1/assinaturas/" + assinatura, null, 200).path("valorMensal").decimalValue()).isEqualByComparingTo("130");
     }
 
+    @Test
+    void reativacaoGeraCobrancaIndividualIdempotenteEEstornoPreservaRecibo() throws Exception {
+        int paciente = paciente(), outroPaciente = paciente(), servico = servico(1);
+        LocalDate hoje = LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo"));
+        int assinatura = ok(HttpMethod.POST, "/api/v1/assinaturas", Map.of("pacienteIds", List.of(paciente),
+                "servicoId", servico, "valorMensal", 250, "diaVencimento", 28, "dataInicio", hoje.toString()), 201)
+                .get(0).path("id").asInt();
+        int outra = ok(HttpMethod.POST, "/api/v1/assinaturas", Map.of("pacienteIds", List.of(outroPaciente),
+                "servicoId", servico, "valorMensal", 300, "diaVencimento", 5, "dataInicio", hoje.toString()), 201)
+                .get(0).path("id").asInt();
+        assertThat(request(HttpMethod.PUT, "/api/v1/assinaturas/" + assinatura + "/cancelar", null).getStatusCode().value()).isEqualTo(204);
+        assertThat(request(HttpMethod.POST, "/api/v1/assinaturas/" + assinatura + "/cobranca-mes-atual", Map.of())
+                .getStatusCode().value()).isEqualTo(400);
+        ok(HttpMethod.PUT, "/api/v1/assinaturas/" + assinatura + "/reativar", Map.of(), 200);
+        assertThat(ok(HttpMethod.POST, "/api/v1/assinaturas/" + assinatura + "/cobranca-mes-atual", Map.of(), 200)
+                .path("gerada").asBoolean()).isTrue();
+        assertThat(ok(HttpMethod.POST, "/api/v1/assinaturas/" + assinatura + "/cobranca-mes-atual", Map.of(), 200)
+                .path("gerada").asBoolean()).isFalse();
+        assertThat(ok(HttpMethod.GET, "/api/v1/cobrancas/assinatura/" + outra, null, 200).size()).isZero();
+        var cobrancas = ok(HttpMethod.GET, "/api/v1/cobrancas/assinatura/" + assinatura, null, 200);
+        assertThat(cobrancas.size()).isEqualTo(1);
+        var cobranca = cobrancas.get(0);
+        assertThat(cobranca.path("pacienteId").asInt()).isEqualTo(paciente);
+        assertThat(cobranca.path("valor").decimalValue()).isEqualByComparingTo("250");
+        int id = cobranca.path("id").asInt();
+        var baixa = Map.of("status", "PAGO", "dataPagamento", hoje.toString(), "recebedor", "CLINICA", "tipoPagamento", "PIX");
+        ok(HttpMethod.PUT, "/api/v1/cobrancas/" + id, baixa, 200);
+        var estornada = ok(HttpMethod.POST, "/api/v1/cobrancas/" + id + "/estorno", Map.of("motivo", "Data de recebimento incorreta"), 200);
+        assertThat(estornada.path("status").asText()).isEqualTo("PENDENTE");
+        assertThat(estornada.path("dataPagamento").isNull()).isTrue();
+        assertThat(estornada.path("recebedor").isNull()).isTrue();
+        assertThat(estornada.path("tipoPagamento").isNull()).isTrue();
+        ok(HttpMethod.PUT, "/api/v1/cobrancas/" + id, baixa, 200);
+        ok(HttpMethod.POST, "/api/v1/recibos", Map.of("cobrancaId", id, "dataPagamento", hoje.toString(),
+                "pagadorNome", "Paciente de teste", "pagadorDocumento", "12345678901"), 201);
+        assertThat(request(HttpMethod.POST, "/api/v1/cobrancas/" + id + "/estorno", Map.of("motivo", "Tentativa com recibo"))
+                .getStatusCode().value()).isEqualTo(400);
+        assertThat(request(HttpMethod.PUT, "/api/v1/cobrancas/" + id, Map.of("status", "PENDENTE"))
+                .getStatusCode().value()).isEqualTo(400);
+        assertThat(ok(HttpMethod.GET, "/api/v1/cobrancas/" + id, null, 200).path("status").asText()).isEqualTo("PAGO");
+    }
+
+    @Test
+    void apiRejeitaSplitInvalidoSemPersistirServico() throws Exception {
+        int id = servico(1);
+        assertThat(request(HttpMethod.PUT, "/api/v1/servicos/" + id,
+                Map.of("nome", "Split inválido", "tipo", "FISIOTERAPIA", "valorBase", 100,
+                        "pctClinica", 30, "pctProfissional", 80, "capacidade", 1, "ativo", true)).getStatusCode().value()).isEqualTo(400);
+        var mantido = ok(HttpMethod.GET, "/api/v1/servicos/" + id, null, 200);
+        assertThat(mantido.path("pctClinica").decimalValue()).isEqualByComparingTo("20");
+        assertThat(mantido.path("pctProfissional").decimalValue()).isEqualByComparingTo("80");
+    }
+
     private int paciente() throws Exception {
         int n = sequencia.incrementAndGet();
         return ok(HttpMethod.POST, "/api/v1/pacientes", Map.of("nome", "Paciente de teste " + n, "cpf", String.format("%011d", n)), 201).path("id").asInt();

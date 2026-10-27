@@ -50,4 +50,18 @@ class ServicoSplitTest {
         assertThat(atualizado.getPctProfissional()).isEqualByComparingTo("80");
         assertThat(atualizado.getValorBase()).isEqualByComparingTo("10");
     }
+
+    @Test void rejeitaPrecisaoQueSeriaArredondadaNoBanco() {
+        when(repository.salvar(any())).thenAnswer(i -> i.getArgument(0));
+        assertThatThrownBy(() -> new CriarServicoService(repository, configuracoes)
+                .criarServico(servico("33.335", "66.665")))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("decimais");
+        verify(repository, never()).salvar(any());
+    }
+
+    @Test void aceitaZerosExcedentesSemPerdaDePrecisao() {
+        when(repository.salvar(any())).thenAnswer(i -> i.getArgument(0));
+        assertThatCode(() -> new CriarServicoService(repository, configuracoes)
+                .criarServico(servico("20.0000", "80.0000"))).doesNotThrowAnyException();
+    }
 }

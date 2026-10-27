@@ -9,6 +9,10 @@ final class ValidadorSplitServico {
     private ValidadorSplitServico() { }
 
     static void validar(BigDecimal clinica, BigDecimal profissional) {
+        if ((clinica != null && clinica.stripTrailingZeros().scale() > 2)
+                || (profissional != null && profissional.stripTrailingZeros().scale() > 2)) {
+            throw new IllegalArgumentException("Os percentuais devem ter no máximo duas casas decimais");
+        }
         if (clinica == null || profissional == null || clinica.signum() < 0 || profissional.signum() < 0
                 || clinica.compareTo(CEM) > 0 || profissional.compareTo(CEM) > 0
                 || clinica.add(profissional).compareTo(CEM) != 0) {

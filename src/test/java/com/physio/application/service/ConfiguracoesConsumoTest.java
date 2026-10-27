@@ -21,11 +21,11 @@ class ConfiguracoesConsumoTest {
         when(repo.salvar(any())).thenAnswer(i->i.getArgument(0));
         var service=new CriarServicoService(repo,config.service);
         config.alterar("capacidadePilates",8); config.alterar("capacidadeFisioterapia",3);
-        var pilates=ServicoConfig.builder().nome("Pilates").tipo(TipoServico.PILATES).build();
+        var pilates=ServicoConfig.builder().nome("Pilates").tipo(TipoServico.PILATES).pctClinica(new BigDecimal("20")).pctProfissional(new BigDecimal("80")).build();
         assertThat(service.criarServico(pilates).getCapacidade()).isEqualTo(8);
-        var fisio=ServicoConfig.builder().nome("Fisio").tipo(TipoServico.FISIOTERAPIA).build();
+        var fisio=ServicoConfig.builder().nome("Fisio").tipo(TipoServico.FISIOTERAPIA).pctClinica(new BigDecimal("20")).pctProfissional(new BigDecimal("80")).build();
         assertThat(service.criarServico(fisio).getCapacidade()).isEqualTo(3);
-        var explicita=ServicoConfig.builder().nome("Personalizado").tipo(TipoServico.PILATES).capacidade(2).build();
+        var explicita=ServicoConfig.builder().nome("Personalizado").tipo(TipoServico.PILATES).capacidade(2).pctClinica(new BigDecimal("20")).pctProfissional(new BigDecimal("80")).build();
         assertThat(service.criarServico(explicita).getCapacidade()).isEqualTo(2);
         config.alterar("capacidadePilates",4); assertThat(pilates.getCapacidade()).isEqualTo(8);
     }
