@@ -74,6 +74,7 @@ public interface AtendimentoJpaRepository extends JpaRepository<AtendimentoEntit
         SELECT a FROM AtendimentoEntity a
         WHERE a.dataHoraInicio < :fim
           AND a.dataHoraFim > :inicio
+          AND a.status <> com.physio.domain.model.StatusAtendimento.CANCELADO
     """)
     List<AtendimentoEntity> findConflitosPeriodo(
             @Param("inicio") LocalDateTime inicio,

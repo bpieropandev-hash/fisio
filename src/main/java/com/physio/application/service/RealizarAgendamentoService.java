@@ -49,6 +49,7 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
         log.info("Iniciando agendamento - Paciente: {}, Serviço: {}, Data/Hora: {}, Recorrente: {}",
                 pacienteId, servicoId, dataHora, dataFimRecorrencia != null);
 
+        atendimentoRepositoryPort.bloquearAgenda();
         // Validações iniciais (comuns para único e recorrente)
         Paciente paciente = pacienteRepositoryPort.buscarPorId(pacienteId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Paciente não encontrado ou inativo: " + pacienteId));
@@ -58,7 +59,7 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
 
         // Cenário A: Agendamento Único
         if (dataFimRecorrencia == null) {
-            validarQuantidadePacientes(dataHora, servico, countPacientes);
+            ValidadorCapacidade.validar(atendimentoRepositoryPort, servico, paciente.getId(), dataHora, fim(servico,dataHora), null);
             Atendimento atendimento = criarUnico(paciente, servico, pacienteId, servicoId, dataHora);
             return List.of(atendimento);
         }
@@ -80,40 +81,17 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
 
         log.info("Serão criados {} agendamentos recorrentes", datasParaAgendar.size());
 
-        // Criar agendamentos para cada data
-        List<Atendimento> atendimentosCriados = new ArrayList<>();
-        int sucessos = 0;
-        int falhas = 0;
-
+        if(datasParaAgendar.isEmpty()) throw new IllegalArgumentException("Nenhuma data corresponde aos dias selecionados");
+        // Validate the entire recurrence before writing; one conflict rejects the request.
         for (LocalDate data : datasParaAgendar) {
-            try {
-                // Manter o mesmo horário da data inicial
-                LocalDateTime dataHoraAgendamento = data.atTime(dataHora.toLocalTime());
-                validarQuantidadePacientes(dataHoraAgendamento, servico, countPacientes);
-                Atendimento atendimento = criarUnico(paciente, servico, pacienteId, servicoId, dataHoraAgendamento);
-                atendimentosCriados.add(atendimento);
-                sucessos++;
-
-            } catch (IllegalArgumentException e) {
-                // Captura exceções de validação (conflito de horário, etc.)
-                falhas++;
-                log.warn("Falha ao criar agendamento para data {}: {}", data, e.getMessage());
-                // Continua a tentar criar os demais agendamentos
-            } catch (Exception e) {
-                falhas++;
-                log.error("Erro inesperado ao criar agendamento para data {}: {}", data, e.getMessage(), e);
-                // Continua a tentar criar os demais agendamentos
-            }
+            var inicio = data.atTime(dataHora.toLocalTime());
+            ValidadorCapacidade.validar(atendimentoRepositoryPort,servico,paciente.getId(),inicio,fim(servico,inicio),null);
         }
-
-        log.info("Agendamento recorrente concluído - Sucessos: {}, Falhas: {}", sucessos, falhas);
-
-        if (atendimentosCriados.isEmpty()) {
-            throw new IllegalStateException("Nenhum agendamento foi criado. Verifique os conflitos de horário.");
-        }
-
-        return atendimentosCriados;
+        List<Atendimento> criados = new ArrayList<>();
+        for (LocalDate data : datasParaAgendar) criados.add(criarUnico(paciente,servico,pacienteId,servicoId,data.atTime(dataHora.toLocalTime())));
+        return criados;
     }
+    private LocalDateTime fim(ServicoConfig servico, LocalDateTime inicio) { return inicio.plusMinutes("Avaliação".equals(servico.getNome())?90:60); }
 
     /**
      * Método privado que extrai a lógica de criação de um único agendamento
@@ -132,7 +110,7 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
                 .paciente(paciente)
                 .servicoBase(servico)
                 .dataHoraInicio(dataHora)
-                .dataHoraFim(servico.getNome().equals("Avaliação") ? dataHora.plusMinutes(90) : dataHora.plusMinutes(60))
+                .dataHoraFim(fim(servico,dataHora))
                 .status(StatusAtendimento.AGENDADO)
                 .statusPagamento(StatusPagamento.PAYMENT_PENDING) // Novo atendimento sempre inicia com pagamento pendente
                 .build();
@@ -147,32 +125,19 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
     }
 
     private void validaTemAssinatura(ServicoConfig servico, Long pacienteId, Long servicoId, Atendimento atendimento) {
-        // REGRA DE NEGÓCIO: Verificar se o paciente tem assinatura ativa para este serviço
-        boolean temAssinaturaAtiva = assinaturaRepositoryPort
-                .buscarAtivaPorPacienteEServico(pacienteId, servicoId)
-                .isPresent();
-
-        if (temAssinaturaAtiva) {
-            // Se tem assinatura ativa, o atendimento não deve ser cobrado (valor = 0)
-            // A cobrança será feita via mensalidade no fim do mês
-            // Para atendimentos com assinatura, não há necessidade de recebedor/tipoPagamento
-            // O statusPagamento permanece PAYMENT_PENDING porque o pagamento será via CobrancaMensal
+        var assinatura = assinaturaRepositoryPort.buscarAtivaPorPacienteEServico(pacienteId, servicoId)
+            .filter(a -> !Boolean.FALSE.equals(a.getAtivo()))
+            .filter(a -> a.getDataInicio()!=null && !atendimento.getDataHoraInicio().toLocalDate().isBefore(a.getDataInicio()))
+            .filter(a -> a.getDataCancelamento()==null || atendimento.getDataHoraInicio().isBefore(a.getDataCancelamento()));
+        if(assinatura.isPresent()) {
+            atendimento.setAssinaturaId(assinatura.get().getId());
+            atendimento.setModalidadeCobranca(com.physio.domain.model.ModalidadeCobranca.MENSALIDADE);
             atendimento.setValorCobrado(BigDecimal.ZERO);
             atendimento.setPctClinicaSnapshot(BigDecimal.ZERO);
             atendimento.setPctProfissionalSnapshot(BigDecimal.ZERO);
-            // Manter PAYMENT_PENDING - o pagamento será processado via mensalidade
-            atendimento.setStatusPagamento(StatusPagamento.PAYMENT_PENDING);
-
-            log.debug("Paciente possui assinatura ativa para este serviço. Atendimento será gratuito (cobrança via mensalidade)");
         } else {
-            // REGRA DE NEGÓCIO CRÍTICA: Criar snapshot financeiro
-            // Copia os valores do serviço para o atendimento, garantindo histórico financeiro
+            atendimento.setModalidadeCobranca(com.physio.domain.model.ModalidadeCobranca.AVULSO);
             atendimento.criarSnapshotFinanceiro(servico);
-
-            log.debug("Snapshot financeiro criado - Valor: {}, % Clínica: {}, % Profissional: {}",
-                    atendimento.getValorCobrado(),
-                    atendimento.getPctClinicaSnapshot(),
-                    atendimento.getPctProfissionalSnapshot());
         }
     }
 
@@ -190,7 +155,7 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
         } else {
             // Converte os inteiros para DayOfWeek
             for (Integer diaInt : diasSemana) {
-                if (diaInt < 1 || diaInt > 7) {
+                if (diaInt == null || diaInt < 1 || diaInt > 7) {
                     throw new IllegalArgumentException("Dia da semana inválido: " + diaInt + ". Deve estar entre 1 (Segunda) e 7 (Domingo)");
                 }
                 // DayOfWeek: MONDAY=1, TUESDAY=2, ..., SUNDAY=7
@@ -223,53 +188,4 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
         return datas;
     }
 
-    private void validarQuantidadePacientes(
-            LocalDateTime dataHora,
-            ServicoConfig servico,
-            Integer countPacientes) {
-
-        // Define duração
-        LocalDateTime dataHoraFim = servico.getNome().equals("Avaliação")
-                ? dataHora.plusMinutes(90)
-                : dataHora.plusMinutes(60);
-
-        List<Atendimento> conflitos = atendimentoRepositoryPort
-                .listarConflitosPorPeriodo(dataHora, dataHoraFim);
-
-        // Regra: não pode misturar tipos de serviço no mesmo horário
-        boolean possuiTipoDiferente = conflitos.stream()
-                .anyMatch(a -> a.getServicoBase().getTipo() != servico.getTipo());
-
-        if (possuiTipoDiferente) {
-            throw new IllegalArgumentException(
-                    "Tipo de serviço diferente de outros agendamentos no mesmo horário."
-            );
-        }
-
-        int totalNoHorario = conflitos.size() + countPacientes;
-
-        if (servico.getTipo() == TipoServico.PILATES) {
-
-            if (totalNoHorario > LIMITE_PILATES) {
-                log.warn(
-                        "Capacidade máxima de {} pacientes atingida para PILATES no horário {} - total={}",
-                        LIMITE_PILATES, dataHora, totalNoHorario
-                );
-                throw new IllegalArgumentException(
-                        "Capacidade máxima para PILATES neste horário atingida (5 pacientes)"
-                );
-            }
-
-        } else if (servico.getTipo() == TipoServico.FISIOTERAPIA && totalNoHorario > LIMITE_FISIOTERAPIA) {
-
-            log.warn(
-                    "Conflito para FISIOTERAPIA no horário {} - total={}",
-                    dataHora, totalNoHorario
-            );
-            throw new IllegalArgumentException(
-                    "Já existe um agendamento neste horário!"
-            );
-
-        }
-    }
 }

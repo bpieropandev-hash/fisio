@@ -52,6 +52,7 @@ public class AgendamentoController {
             @ApiResponse(responseCode = "404", description = "Paciente ou serviço não encontrado")
     })
     @PostMapping
+    @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<List<AtendimentoResponseDTO>> realizarAgendamento(
             @Valid @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Dados necessários para criar um agendamento (único ou recorrente)") 
             @RequestBody AgendamentoRequestDTO request) {
@@ -60,6 +61,7 @@ public class AgendamentoController {
                 request.getPacienteIds(), request.getServicoId(), request.getDataHora(),
                 request.getDataFimRecorrencia() != null);
 
+        if(request.getPacienteIds().stream().distinct().count()!=request.getPacienteIds().size()) throw new IllegalArgumentException("Paciente duplicado na solicitação");
         // Chamar o use case (agora sempre retorna lista)
         var atendimentos = request.getPacienteIds().stream()
                 .flatMap(pacienteId -> realizarAgendamentoUseCase.realizarAgendamento(
@@ -68,7 +70,7 @@ public class AgendamentoController {
                         request.getDataHora(),
                         request.getDataFimRecorrencia(),
                         request.getDiasSemana(),
-                        request.getPacienteIds().size()
+                        1
                 ).stream())
                 .toList();
 
@@ -79,6 +81,11 @@ public class AgendamentoController {
                         .pacienteId(a.getPaciente().getId())
                         .servicoBaseId(a.getServicoBase().getId())
                         .dataHoraInicio(a.getDataHoraInicio())
+                .dataHoraFim(a.getDataHoraFim())
+                .statusPagamento(a.getStatusPagamento()!=null?a.getStatusPagamento().name():null)
+                .assinaturaId(a.getAssinaturaId())
+                .modalidadeCobranca(a.getModalidadeCobranca()!=null?a.getModalidadeCobranca().name():"LEGADO")
+                .dataPagamento(a.getDataPagamento())
                         .valorCobrado(a.getValorCobrado())
                         .pctClinicaSnapshot(a.getPctClinicaSnapshot())
                         .pctProfissionalSnapshot(a.getPctProfissionalSnapshot())
@@ -104,6 +111,11 @@ public class AgendamentoController {
                 .pacienteId(a.getPaciente().getId())
                 .servicoBaseId(a.getServicoBase().getId())
                 .dataHoraInicio(a.getDataHoraInicio())
+                .dataHoraFim(a.getDataHoraFim())
+                .statusPagamento(a.getStatusPagamento()!=null?a.getStatusPagamento().name():null)
+                .assinaturaId(a.getAssinaturaId())
+                .modalidadeCobranca(a.getModalidadeCobranca()!=null?a.getModalidadeCobranca().name():"LEGADO")
+                .dataPagamento(a.getDataPagamento())
                 .valorCobrado(a.getValorCobrado())
                 .pctClinicaSnapshot(a.getPctClinicaSnapshot())
                 .pctProfissionalSnapshot(a.getPctProfissionalSnapshot())
@@ -129,10 +141,18 @@ public class AgendamentoController {
                 .pacienteId(atendimento.getPaciente().getId())
                 .servicoBaseId(atendimento.getServicoBase().getId())
                 .dataHoraInicio(atendimento.getDataHoraInicio())
+                .dataHoraFim(atendimento.getDataHoraFim())
+                .statusPagamento(atendimento.getStatusPagamento()!=null?atendimento.getStatusPagamento().name():null)
+                .assinaturaId(atendimento.getAssinaturaId())
+                .modalidadeCobranca(atendimento.getModalidadeCobranca()!=null?atendimento.getModalidadeCobranca().name():"LEGADO")
+                .dataPagamento(atendimento.getDataPagamento())
                 .valorCobrado(atendimento.getValorCobrado())
                 .pctClinicaSnapshot(atendimento.getPctClinicaSnapshot())
                 .pctProfissionalSnapshot(atendimento.getPctProfissionalSnapshot())
                 .status(atendimento.getStatus() != null ? atendimento.getStatus().name() : null)
+                .evolucao(atendimento.getEvolucao())
+                .recebedor(atendimento.getRecebedor()!=null?atendimento.getRecebedor().name():null)
+                .tipoPagamento(atendimento.getTipoPagamento()!=null?atendimento.getTipoPagamento().name():null)
                 .build();
         return ResponseEntity.ok(dto);
     }
@@ -147,12 +167,8 @@ public class AgendamentoController {
     public ResponseEntity<AtendimentoResponseDTO> atualizarAtendimento(@Parameter(description = "ID do atendimento", example = "1") @PathVariable Long id,
                                                                         @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Campos opcionais para atualização do atendimento") @RequestBody com.physio.infrastructure.in.web.dto.AtendimentoUpdateRequestDTO request) {
         var domain = com.physio.domain.model.Atendimento.builder()
-                .dataHoraInicio(request.getDataHoraInicio())
-                .status(request.getStatus())
-                .evolucao(request.getEvolucao())
-                .recebedor(request.getRecebedor())
-                .tipoPagamento(request.getTipoPagamento())
-                .build();
+                .dataHoraInicio(request.getDataHoraInicio()).dataHoraFim(request.getDataHoraFim()).dataPagamento(request.getDataPagamento())
+                .status(request.getStatus()).evolucao(request.getEvolucao()).recebedor(request.getRecebedor()).tipoPagamento(request.getTipoPagamento()).build();
 
         var atualizado = atualizarAtendimentoUseCase.atualizar(id, domain);
         var dto = AtendimentoResponseDTO.builder()
@@ -160,10 +176,18 @@ public class AgendamentoController {
                 .pacienteId(atualizado.getPaciente().getId())
                 .servicoBaseId(atualizado.getServicoBase().getId())
                 .dataHoraInicio(atualizado.getDataHoraInicio())
+                .dataHoraFim(atualizado.getDataHoraFim())
+                .statusPagamento(atualizado.getStatusPagamento()!=null?atualizado.getStatusPagamento().name():null)
+                .assinaturaId(atualizado.getAssinaturaId())
+                .modalidadeCobranca(atualizado.getModalidadeCobranca()!=null?atualizado.getModalidadeCobranca().name():"LEGADO")
+                .dataPagamento(atualizado.getDataPagamento())
                 .valorCobrado(atualizado.getValorCobrado())
                 .pctClinicaSnapshot(atualizado.getPctClinicaSnapshot())
                 .pctProfissionalSnapshot(atualizado.getPctProfissionalSnapshot())
                 .status(atualizado.getStatus() != null ? atualizado.getStatus().name() : null)
+                .evolucao(atualizado.getEvolucao())
+                .recebedor(atualizado.getRecebedor()!=null?atualizado.getRecebedor().name():null)
+                .tipoPagamento(atualizado.getTipoPagamento()!=null?atualizado.getTipoPagamento().name():null)
                 .build();
         return ResponseEntity.ok(dto);
     }

@@ -1,83 +1,50 @@
 package com.physio.application.service;
-
-import com.physio.domain.model.Atendimento;
-import com.physio.domain.model.StatusPagamento;
+import com.physio.domain.model.*;
 import com.physio.domain.ports.in.AtualizarAtendimentoUseCase;
 import com.physio.domain.ports.out.AtendimentoRepositoryPort;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-@Service
-@RequiredArgsConstructor
-@Slf4j
+import org.springframework.transaction.annotation.Transactional;
+@Service @RequiredArgsConstructor
 public class AtualizarAtendimentoService implements AtualizarAtendimentoUseCase {
-
-    private final AtendimentoRepositoryPort atendimentoRepositoryPort;
-
-    @Override
-    public Atendimento atualizar(Long id, Atendimento atendimento) {
-        log.info("Atualizando atendimento - ID: {}", id);
-        var existente = atendimentoRepositoryPort.buscarPorId(id);
-        if (existente == null) throw new IllegalArgumentException("Atendimento não encontrado: " + id);
-
-        if (atendimento.getDataHoraInicio() != null) {
-            // Se só o início mudou, desloca o fim junto para preservar a duração —
-            // senão o atendimento fica com fim anterior ao início
-            if (atendimento.getDataHoraFim() == null
-                    && existente.getDataHoraInicio() != null
-                    && existente.getDataHoraFim() != null) {
-                var duracao = java.time.Duration.between(existente.getDataHoraInicio(), existente.getDataHoraFim());
-                existente.setDataHoraFim(atendimento.getDataHoraInicio().plus(duracao));
-            }
-            existente.setDataHoraInicio(atendimento.getDataHoraInicio());
-        }
-        if (atendimento.getDataHoraFim() != null) existente.setDataHoraFim(atendimento.getDataHoraFim());
-        if (atendimento.getStatus() != null) existente.setStatus(atendimento.getStatus());
-        if (atendimento.getEvolucao() != null) existente.setEvolucao(atendimento.getEvolucao());
-        
-        // REGRA DE NEGÓCIO: Verificar se é atendimento com assinatura (valorCobrado = 0)
-        boolean temAssinatura = existente.getValorCobrado() != null && 
-                                 existente.getValorCobrado().compareTo(java.math.BigDecimal.ZERO) == 0;
-        
-        if (temAssinatura) {
-            // Para atendimentos com assinatura, não devemos permitir recebedor/tipoPagamento
-            // O pagamento é feito via mensalidade (CobrancaMensal) no fim do mês
-            // Limpar campos de pagamento se tentarem ser atualizados
-            if (atendimento.getRecebedor() != null || atendimento.getTipoPagamento() != null) {
-                log.warn("Tentativa de atualizar recebedor/tipoPagamento em atendimento com assinatura (ID: {}). " +
-                         "Campos ignorados - pagamento é via mensalidade.", id);
-            }
-            existente.setRecebedor(null);
-            existente.setTipoPagamento(null);
-            existente.setStatusPagamento(StatusPagamento.PAYMENT_PENDING);
-            log.debug("Atendimento {} tem assinatura - pagamento será via mensalidade, não via atendimento", id);
-        } else {
-            // Para atendimentos avulsos (valorCobrado > 0), aplicar lógica normal de pagamento
-            // Atualizar campos de pagamento (podem ser null - não são obrigatórios)
-            if (atendimento.getRecebedor() != null) {
-                existente.setRecebedor(atendimento.getRecebedor());
-            }
-            
-            if (atendimento.getTipoPagamento() != null) {
-                existente.setTipoPagamento(atendimento.getTipoPagamento());
-            }
-            
-            // Determinar status de pagamento baseado na presença dos dados de pagamento
-            // Regra de negócio: ambos (recebedor E tipoPagamento) devem estar presentes para ser PAID
-            // Caso contrário, marca como PAYMENT_PENDING
-            if (existente.getRecebedor() != null && existente.getTipoPagamento() != null) {
-                existente.setStatusPagamento(StatusPagamento.PAID);
-                log.debug("Atendimento {} marcado como PAID - recebedor e tipoPagamento presentes", id);
-            } else {
-                existente.setStatusPagamento(StatusPagamento.PAYMENT_PENDING);
-                log.debug("Atendimento {} marcado como PAYMENT_PENDING - dados de pagamento ausentes ou incompletos", id);
-            }
-        }
-
-        var salvo = atendimentoRepositoryPort.salvar(existente);
-        log.info("Atendimento atualizado - ID: {}, Status Pagamento: {}", salvo.getId(), salvo.getStatusPagamento());
-        return salvo;
-    }
+ private final AtendimentoRepositoryPort atendimentoRepositoryPort;
+ private final com.physio.domain.ports.out.AssinaturaRepositoryPort assinaturas;
+ @Override @Transactional public Atendimento atualizar(Long id, Atendimento dados) {
+  atendimentoRepositoryPort.bloquearAgenda();
+  atendimentoRepositoryPort.bloquearAtendimento(id);
+  var atual=atendimentoRepositoryPort.buscarPorId(id);
+  if(atual==null) throw new jakarta.persistence.EntityNotFoundException("Atendimento não encontrado: "+id);
+  boolean mudouHorario=dados.getDataHoraInicio()!=null||dados.getDataHoraFim()!=null || (atual.getStatus()==StatusAtendimento.CANCELADO && dados.getStatus()!=null && dados.getStatus()!=StatusAtendimento.CANCELADO);
+  if(mudouHorario && atual.getAssinaturaId()!=null) {
+   var assinatura=assinaturas.buscarPorId(atual.getAssinaturaId().longValue()).orElseThrow(()->new IllegalArgumentException("Assinatura vinculada não encontrada"));
+   var novoInicio=dados.getDataHoraInicio()!=null?dados.getDataHoraInicio():atual.getDataHoraInicio();
+   if(assinatura.getDataInicio()==null || novoInicio.toLocalDate().isBefore(assinatura.getDataInicio()) || (assinatura.getDataCancelamento()!=null && !novoInicio.isBefore(assinatura.getDataCancelamento()))) throw new IllegalArgumentException("O novo horário está fora da vigência da mensalidade");
+  }
+  if(dados.getDataHoraInicio()!=null) {
+   if(dados.getDataHoraFim()==null && atual.getDataHoraFim()!=null) atual.setDataHoraFim(dados.getDataHoraInicio().plus(java.time.Duration.between(atual.getDataHoraInicio(),atual.getDataHoraFim())));
+   atual.setDataHoraInicio(dados.getDataHoraInicio());
+  }
+  if(dados.getDataHoraFim()!=null) atual.setDataHoraFim(dados.getDataHoraFim());
+  if(dados.getStatus()!=null) atual.setStatus(dados.getStatus());
+  if(mudouHorario && atual.getStatus()!=StatusAtendimento.CANCELADO) ValidadorCapacidade.validar(atendimentoRepositoryPort,atual.getServicoBase(),atual.getPaciente().getId(),atual.getDataHoraInicio(),atual.getDataHoraFim(),atual.getId());
+  if(dados.getEvolucao()!=null) {
+   if(atendimentoRepositoryPort.possuiEvolucaoEstruturada(id) && !java.util.Objects.equals(dados.getEvolucao(),atual.getEvolucao())) throw new IllegalArgumentException("Atualize a evolução pela ficha estruturada");
+   atual.setEvolucao(dados.getEvolucao());
+  }
+  if(atual.getModalidadeCobranca()==ModalidadeCobranca.MENSALIDADE || atual.getAssinaturaId()!=null) {
+   if(dados.getRecebedor()!=null || dados.getTipoPagamento()!=null || dados.getDataPagamento()!=null) throw new IllegalArgumentException("Atendimento coberto por mensalidade: registre pagamento na cobrança mensal");
+  } else {
+   if(dados.getRecebedor()!=null) atual.setRecebedor(dados.getRecebedor());
+   if(dados.getTipoPagamento()!=null) atual.setTipoPagamento(dados.getTipoPagamento());
+   if(dados.getDataPagamento()!=null) {
+    if(dados.getDataPagamento().isAfter(java.time.LocalDate.now())) throw new IllegalArgumentException("Data de pagamento não pode ser futura");
+    atual.setDataPagamento(dados.getDataPagamento());
+   }
+   if(atual.getRecebedor()!=null && atual.getTipoPagamento()!=null) {
+    if(atual.getDataPagamento()==null && atual.getStatusPagamento()!=StatusPagamento.PAID) throw new IllegalArgumentException("Informe a data de recebimento");
+    atual.setStatusPagamento(StatusPagamento.PAID);
+   } else atual.setStatusPagamento(StatusPagamento.PAYMENT_PENDING);
+  }
+  return atendimentoRepositoryPort.salvar(atual);
+ }
 }
-

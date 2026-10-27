@@ -34,6 +34,10 @@ public class AtualizarServicoService implements AtualizarServicoUseCase {
         if (servico.getAtivo() != null) existente.setAtivo(servico.getAtivo());
         if (servico.getTipo() != null) existente.setTipo(servico.getTipo());
 
+        if(servico.getCapacidade()!=null) {
+            if(servico.getCapacidade()<1 || servico.getCapacidade()>100) throw new IllegalArgumentException("Capacidade deve estar entre 1 e 100");
+            existente.setCapacidade(servico.getCapacidade());
+        }
         var salvo = servicoRepositoryPort.salvar(existente);
         log.info("Serviço atualizado - ID: {}", salvo.getId());
         return salvo;

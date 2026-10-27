@@ -15,6 +15,7 @@ import com.physio.domain.model.TipoServico;
 @AllArgsConstructor
 public class ServicoConfig {
     private Integer id;
+    private Integer capacidade;
     private String nome;
     private BigDecimal valorBase;
     private BigDecimal pctClinica;

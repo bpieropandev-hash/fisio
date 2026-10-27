@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class ServicoResponseDTO {
     private Integer id;
+    private Integer capacidade;
 
     @Schema(example = "Fisioterapia (Domicílio)")
     private String nome;

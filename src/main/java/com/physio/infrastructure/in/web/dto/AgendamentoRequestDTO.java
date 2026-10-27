@@ -17,9 +17,9 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AgendamentoRequestDTO {
-    @NotNull(message = "A lista de IDs de pacientes é obrigatória")
+    @jakarta.validation.constraints.NotEmpty(message = "Informe ao menos um paciente")
     @Schema(example = "[1, 2, 3]")
-    private List<Long> pacienteIds;
+    private List<@NotNull @jakarta.validation.constraints.Positive Long> pacienteIds;
 
     @NotNull(message = "ID do serviço é obrigatório")
     @Schema(example = "2")

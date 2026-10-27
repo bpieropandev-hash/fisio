@@ -6,6 +6,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface AtendimentoRepositoryPort {
+    default void bloquearAgenda() {}
+    default void bloquearAtendimento(Long id) {}
+    default boolean possuiEvolucaoEstruturada(Long id) { return false; }
     Atendimento salvar(Atendimento atendimento);
     Atendimento buscarPorId(Long id);
     List<Atendimento> listarTodos();
