@@ -20,6 +20,10 @@ public class AtualizarServicoService implements AtualizarServicoUseCase {
         var existenteOpt = servicoRepositoryPort.buscarPorId(id);
         var existente = existenteOpt.orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Serviço não encontrado: " + id));
 
+        ValidadorSplitServico.validar(
+                servico.getPctClinica() != null ? servico.getPctClinica() : existente.getPctClinica(),
+                servico.getPctProfissional() != null ? servico.getPctProfissional() : existente.getPctProfissional());
+
         if (servico.getNome() != null && !servico.getNome().equals(existente.getNome())) {
             var porNome = servicoRepositoryPort.buscarPorNome(servico.getNome());
             if (porNome.isPresent()) {

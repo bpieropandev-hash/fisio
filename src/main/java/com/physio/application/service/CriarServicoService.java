@@ -23,6 +23,8 @@ public class CriarServicoService implements CriarServicoUseCase {
             throw new IllegalArgumentException("Nome do serviço é obrigatório");
         }
 
+        ValidadorSplitServico.validar(servico.getPctClinica(), servico.getPctProfissional());
+
         // Verificar nome único
         var existente = servicoRepositoryPort.buscarPorNome(servico.getNome());
         if (existente.isPresent()) {
