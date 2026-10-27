@@ -104,4 +104,62 @@ class GeradorCobrancaServiceTest {
         assertEquals(1, geradas);
         verify(cobrancaMensalRepositoryPort, times(2)).salvar(any());
     }
+    @Test
+    void geraSomenteAssinaturaEscolhidaComSnapshot() {
+        Assinatura assinatura = criarAssinatura(7, "180.00");
+        when(assinaturaRepositoryPort.buscarPorId(7L)).thenReturn(java.util.Optional.of(assinatura));
+        when(cobrancaMensalRepositoryPort.buscarPorAssinaturaMesAno(7L, 2, 2026)).thenReturn(java.util.Optional.empty());
+        assertEquals(true, geradorCobrancaService.gerarParaAssinatura(7L, java.time.YearMonth.of(2026, 2)));
+        ArgumentCaptor<CobrancaMensal> captor = ArgumentCaptor.forClass(CobrancaMensal.class);
+        verify(cobrancaMensalRepositoryPort).salvar(captor.capture());
+        assertEquals(7, captor.getValue().getAssinatura().getId());
+        assertEquals(new BigDecimal("20"), captor.getValue().getPctClinicaSnapshot());
+        assertEquals(new BigDecimal("180.00"), captor.getValue().getValor());
+        verify(assinaturaRepositoryPort, never()).listarAtivas();
+    }
+
+    @Test
+    void preservaCobrancaExistenteSemAlterarSnapshot() {
+        when(assinaturaRepositoryPort.buscarPorId(7L)).thenReturn(java.util.Optional.of(criarAssinatura(7, "180.00")));
+        when(cobrancaMensalRepositoryPort.buscarPorAssinaturaMesAno(7L, 2, 2026))
+                .thenReturn(java.util.Optional.of(CobrancaMensal.builder().build()));
+        assertEquals(false, geradorCobrancaService.gerarParaAssinatura(7L, java.time.YearMonth.of(2026, 2)));
+        verify(cobrancaMensalRepositoryPort, never()).salvar(any());
+    }
+
+    @Test
+    void rejeitaInativaOuForaDeVigencia() {
+        Assinatura assinatura = criarAssinatura(7, "180.00");
+        when(assinaturaRepositoryPort.buscarPorId(7L)).thenReturn(java.util.Optional.of(assinatura));
+        assinatura.setAtivo(false);
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> geradorCobrancaService.gerarParaAssinatura(7L, java.time.YearMonth.of(2026, 2)));
+        assinatura.setAtivo(true);
+        assinatura.setDataInicio(java.time.LocalDate.of(2026, 3, 1));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> geradorCobrancaService.gerarParaAssinatura(7L, java.time.YearMonth.of(2026, 2)));
+        assinatura.setDataInicio(java.time.LocalDate.of(2026, 1, 1));
+        assinatura.setDataCancelamento(java.time.LocalDateTime.of(2026, 1, 31, 12, 0));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> geradorCobrancaService.gerarParaAssinatura(7L, java.time.YearMonth.of(2026, 2)));
+        verify(cobrancaMensalRepositoryPort, never()).salvar(any());
+    }
+
+    @Test
+    void reconheceCorridaSomenteQuandoExisteCobrancaConfirmada() {
+        when(assinaturaRepositoryPort.buscarPorId(7L)).thenReturn(java.util.Optional.of(criarAssinatura(7, "180.00")));
+        when(cobrancaMensalRepositoryPort.buscarPorAssinaturaMesAno(7L, 2, 2026))
+                .thenReturn(java.util.Optional.empty()).thenReturn(java.util.Optional.of(CobrancaMensal.builder().build()));
+        when(cobrancaMensalRepositoryPort.salvar(any())).thenThrow(new DataIntegrityViolationException("unique"));
+        assertEquals(false, geradorCobrancaService.gerarParaAssinatura(7L, java.time.YearMonth.of(2026, 2)));
+    }
+
+    @Test
+    void naoOcultaErroDeIntegridadeDiferenteDeDuplicata() {
+        when(assinaturaRepositoryPort.buscarPorId(7L)).thenReturn(java.util.Optional.of(criarAssinatura(7, "180.00")));
+        when(cobrancaMensalRepositoryPort.salvar(any())).thenThrow(new DataIntegrityViolationException("outra constraint"));
+        org.junit.jupiter.api.Assertions.assertThrows(DataIntegrityViolationException.class,
+                () -> geradorCobrancaService.gerarParaAssinatura(7L, java.time.YearMonth.of(2026, 2)));
+    }
+
 }
