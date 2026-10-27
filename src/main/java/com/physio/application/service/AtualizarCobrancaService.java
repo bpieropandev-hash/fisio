@@ -19,16 +19,30 @@ import java.time.LocalDate;
 public class AtualizarCobrancaService implements AtualizarCobrancaUseCase {
 
     private final CobrancaMensalRepositoryPort cobrancaMensalRepositoryPort;
+    private final com.physio.infrastructure.out.persistence.repository.ReciboJpaRepository recibos;
+    private final AgendaTransacaoLock lock;
 
     @Override
     @Transactional
     public CobrancaMensal atualizarCobranca(Long cobrancaId, StatusCobranca status, LocalDate dataPagamento, Recebedor recebedor, TipoPagamento tipoPagamento) {
         log.info("Atualizando cobrança - ID: {}, Status: {}", cobrancaId, status);
 
+        lock.bloquear();
         cobrancaMensalRepositoryPort.bloquear(cobrancaId);
         CobrancaMensal cobranca = cobrancaMensalRepositoryPort.buscarPorId(cobrancaId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cobrança não encontrada: " + cobrancaId));
 
+        if (recibos.findByCobrancaId(cobranca.getId()).isPresent()) {
+            throw new IllegalArgumentException("Cobrança com recibo emitido não pode ser alterada");
+        }
+        if (cobranca.getStatus() == StatusCobranca.PAGO && status != StatusCobranca.PAGO) {
+            throw new IllegalArgumentException("Utilize o estorno de baixa e informe o motivo");
+        }
+        if (status != StatusCobranca.PAGO) {
+            dataPagamento = null;
+            recebedor = null;
+            tipoPagamento = null;
+        }
         // Atualizar campos
         cobranca.setStatus(status);
         cobranca.setDataPagamento(dataPagamento);

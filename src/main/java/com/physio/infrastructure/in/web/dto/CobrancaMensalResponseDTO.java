@@ -23,6 +23,9 @@ public class CobrancaMensalResponseDTO {
     @Schema(example = "1")
     private Integer assinaturaId;
 
+    private Integer pacienteId;
+    private String pacienteNome;
+
     @Schema(example = "João da Silva - Pilates")
     private String descricao;
 

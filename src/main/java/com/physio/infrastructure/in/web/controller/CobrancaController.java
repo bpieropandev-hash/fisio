@@ -29,6 +29,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CobrancaController {
 
+    private final com.physio.application.service.EstornarCobrancaService estornarCobrancaService;
+
     private final AtualizarCobrancaUseCase atualizarCobrancaUseCase;
     private final com.physio.domain.ports.in.ListarCobrancasUseCase listarCobrancasUseCase;
     private final CobrancaMensalRepositoryPort cobrancaMensalRepositoryPort;
@@ -77,6 +79,13 @@ public class CobrancaController {
         return ResponseEntity.ok(toDTO(cobranca));
     }
 
+    @PostMapping("/{id}/estorno")
+    public ResponseEntity<CobrancaMensalResponseDTO> estornar(@PathVariable Long id,
+            @Valid @RequestBody com.physio.infrastructure.in.web.dto.EstornoCobrancaRequestDTO request,
+            java.security.Principal principal) {
+        return ResponseEntity.ok(toDTO(estornarCobrancaService.estornar(id, request.motivo(), principal.getName())));
+    }
+
     @Operation(summary = "Buscar cobrança por ID")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Cobrança encontrada"),
@@ -109,6 +118,8 @@ public class CobrancaController {
         return CobrancaMensalResponseDTO.builder()
                 .id(cobranca.getId())
                 .assinaturaId(cobranca.getAssinatura().getId())
+                .pacienteId(cobranca.getAssinatura().getPaciente().getId())
+                .pacienteNome(cobranca.getAssinatura().getPaciente().getNome())
                 .descricao(cobranca.getAssinatura().getPaciente().getNome() + " - " +
                           cobranca.getAssinatura().getServico().getNome())
                 .mesReferencia(cobranca.getMesReferencia())
