@@ -30,7 +30,7 @@ public class EstornarCobrancaService {
   if (recibos.findByCobrancaId(cobranca.getId()).isPresent()) throw new IllegalArgumentException("Cobrança com recibo emitido não pode ser estornada");
   if (cobranca.getStatus() != StatusCobranca.PAGO) throw new IllegalArgumentException("Somente cobrança paga pode ser estornada");
   estornos.save(EstornoCobrancaEntity.builder().cobrancaId(cobranca.getId()).motivo(motivo.trim()).autor(autor)
-   .estornadoEm(LocalDateTime.now()).dataPagamentoAnterior(cobranca.getDataPagamento())
+   .estornadoEm(LocalDateTime.now(java.time.ZoneId.of("America/Sao_Paulo"))).dataPagamentoAnterior(cobranca.getDataPagamento())
    .recebedorAnterior(cobranca.getRecebedor() == null ? null : cobranca.getRecebedor().name())
    .tipoPagamentoAnterior(cobranca.getTipoPagamento() == null ? null : cobranca.getTipoPagamento().name()).build());
   cobranca.setStatus(StatusCobranca.PENDENTE);
