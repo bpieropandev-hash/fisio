@@ -16,7 +16,7 @@ class ReciboServiceTest {
  final ReciboJpaRepository recibos=mock(ReciboJpaRepository.class);
  final AgendaTransacaoLock lock=mock(AgendaTransacaoLock.class);
  final LocalDate data=LocalDate.of(2026,10,26);
- final ReciboService service=new ReciboService(atendimentos,cobrancas,recibos,lock,"Clínica Teste","12345678901");
+ final ReciboService service=new ReciboService(atendimentos,cobrancas,recibos,lock,new ConfiguracoesTestFixture().service);
  final ReciboRequestDTO request=new ReciboRequestDTO(1,null,data,"Pagador","12345678901");
  Atendimento atendimento(StatusPagamento status,String valor) {
   return Atendimento.builder().id(1).paciente(Paciente.builder().id(4).nome("Paciente").cpf("11122233344").build())

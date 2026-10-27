@@ -1,6 +1,7 @@
 package com.physio.infrastructure.in.web.exception;
 import com.physio.infrastructure.in.web.controller.*;
 import com.physio.application.service.EvolucaoVersaoConflitanteException;
+import com.physio.application.service.ConfiguracoesVersaoConflitanteException;
 import com.physio.infrastructure.in.web.dto.ErrorResponseDTO;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -11,10 +12,10 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Order(Ordered.HIGHEST_PRECEDENCE)
-@RestControllerAdvice(assignableTypes={FotoClinicaController.class,EvolucaoClinicaController.class})
+@RestControllerAdvice(assignableTypes={FotoClinicaController.class,EvolucaoClinicaController.class,ConfiguracoesController.class})
 public class ClinicaExceptionHandler {
-    @ExceptionHandler(EvolucaoVersaoConflitanteException.class)
-    public ResponseEntity<ErrorResponseDTO> conflito(EvolucaoVersaoConflitanteException ex) {
+    @ExceptionHandler({EvolucaoVersaoConflitanteException.class, ConfiguracoesVersaoConflitanteException.class})
+    public ResponseEntity<ErrorResponseDTO> conflito(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponseDTO(409, ex.getMessage()));
     }
 

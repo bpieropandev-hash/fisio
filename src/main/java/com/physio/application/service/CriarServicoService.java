@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 public class CriarServicoService implements CriarServicoUseCase {
 
     private final ServicoRepositoryPort servicoRepositoryPort;
+    private final ConfiguracoesService configuracoes;
 
     @Override
     public ServicoConfig criarServico(ServicoConfig servico) {
@@ -32,7 +33,11 @@ public class CriarServicoService implements CriarServicoUseCase {
             servico.setAtivo(Boolean.TRUE);
         }
 
-        if(servico.getCapacidade()==null) servico.setCapacidade(ValidadorCapacidade.capacidade(servico));
+        if(servico.getCapacidade()==null) {
+            var config=configuracoes.buscar();
+            servico.setCapacidade(servico.getTipo()==com.physio.domain.model.TipoServico.PILATES
+                    ? config.capacidadePilates() : config.capacidadeFisioterapia());
+        }
         if(servico.getCapacidade()<1 || servico.getCapacidade()>100) throw new IllegalArgumentException("Capacidade deve estar entre 1 e 100");
         // Salvar
         ServicoConfig salvo = servicoRepositoryPort.salvar(servico);

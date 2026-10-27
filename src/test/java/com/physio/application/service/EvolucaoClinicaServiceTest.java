@@ -12,7 +12,7 @@ import static org.mockito.Mockito.*;
 class EvolucaoClinicaServiceTest {
     final EntityManager em=mock(EntityManager.class);
     final EvolucaoClinicaRepository repository=mock(EvolucaoClinicaRepository.class);
-    final EvolucaoClinicaService service=new EvolucaoClinicaService(repository,em);
+    final EvolucaoClinicaService service=new EvolucaoClinicaService(repository,em,new ConfiguracoesTestFixture().service);
     final List<EvolucaoClinicaEntity> revisoes=new ArrayList<>();
     final AtendimentoEntity atendimento=AtendimentoEntity.builder().id(7).evolucao("Registro legado").build();
     @BeforeEach void setup() {
@@ -39,7 +39,7 @@ class EvolucaoClinicaServiceTest {
     @Test void resumoDeterministicoPreservaLegadoEAutoria() {
         var dto=service.salvar(7,req(0,List.of("PILATES","PRESSAO_ARTERIAL"),List.of("REFORMER","SOLO"),120,80,3,"Melhora."),"profissional");
         assertThat(dto.versao()).isEqualTo(1);
-        assertThat(dto.resumo()).isEqualTo("Procedimentos: Pressão arterial, Pilates. Equipamentos: Reformer, Solo. Pressão arterial: 120/80 mmHg. Dor: 3/10. Observações: Melhora.\nRegistro anterior: Registro legado");
+        assertThat(dto.resumo()).isEqualTo("Procedimentos: Pressão aferida, Pilates. Equipamentos: Reformer, Solo. Pressão arterial: 120/80 mmHg. Dor: 3/10. Observações: Melhora.\nRegistro anterior: Registro legado");
         assertThat(atendimento.getEvolucao()).isEqualTo(dto.resumo()); assertThat(dto.autor()).isEqualTo("profissional");
     }
     @Test void versaoObsoletaNaoSobrescreveRevisao() {

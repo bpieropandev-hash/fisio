@@ -9,8 +9,8 @@ public class EvolucaoClinicaEntity {
     @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
     @Column(name="atendimento_id",nullable=false) private Integer atendimentoId;
     @Column(nullable=false) private Integer versao;
-    @Column(nullable=false,length=300) private String procedimentos;
-    @Column(nullable=false,length=150) private String equipamentos;
+    @Column(nullable=false,length=2550) private String procedimentos;
+    @Column(nullable=false,length=2550) private String equipamentos;
     @Column(name="pressao_sistolica") private Integer pressaoSistolica;
     @Column(name="pressao_diastolica") private Integer pressaoDiastolica;
     private Integer dor;

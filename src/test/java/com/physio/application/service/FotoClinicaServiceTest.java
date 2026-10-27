@@ -15,7 +15,7 @@ import static org.mockito.ArgumentMatchers.any;
 class FotoClinicaServiceTest {
     final FotoClinicaRepository fotos = mock(FotoClinicaRepository.class);
     final PacienteJpaRepository pacientes = mock(PacienteJpaRepository.class);
-    final FotoClinicaService service = new FotoClinicaService(fotos, pacientes);
+    final FotoClinicaService service = new FotoClinicaService(fotos, pacientes,new ConfiguracoesTestFixture().service);
     final LocalDate data = LocalDate.of(2026, 10, 20);
     @Test void salvaImagemRealComMetadadosEAutoria() throws Exception {
         when(pacientes.existsById(1)).thenReturn(true);

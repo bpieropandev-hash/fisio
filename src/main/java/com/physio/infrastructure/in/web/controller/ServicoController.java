@@ -1,6 +1,8 @@
 package com.physio.infrastructure.in.web.controller;
 
 import com.physio.domain.model.ReajusteResultado;
+import com.physio.application.service.AtualizarCapacidadeServicoService;
+import com.physio.infrastructure.in.web.dto.ServicoCapacidadeRequestDTO;
 import com.physio.domain.model.ServicoConfig;
 import com.physio.domain.ports.in.CriarServicoUseCase;
 import com.physio.domain.ports.in.BuscarServicoUseCase;
@@ -34,6 +36,7 @@ import org.springframework.web.bind.annotation.*;
 public class ServicoController {
 
     private final CriarServicoUseCase criarServicoUseCase;
+    private final AtualizarCapacidadeServicoService atualizarCapacidadeServicoService;
     private final BuscarServicoUseCase buscarServicoUseCase;
     private final ListarServicosUseCase listarServicosUseCase;
     private final AtualizarServicoUseCase atualizarServicoUseCase;
@@ -111,6 +114,13 @@ public class ServicoController {
                 .capacidade(servico.getCapacidade())
                 .build();
         return ResponseEntity.ok(dto);
+    }
+
+    @PutMapping("/{id}/capacidade")
+    public ResponseEntity<Void> atualizarCapacidade(@PathVariable Integer id,
+            @Valid @RequestBody ServicoCapacidadeRequestDTO request) {
+        atualizarCapacidadeServicoService.atualizar(id,request.capacidade());
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "Atualizar serviço")

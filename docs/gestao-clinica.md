@@ -5,7 +5,7 @@ Esta entrega acrescenta fotos clínicas, evolução por marcação, capacidade d
 ## Configuração
 
 - Java 21 e PostgreSQL, conforme a aplicação existente. Flyway aplica V10–V12; não executar os scripts manualmente junto com Flyway.
-- `RECIBO_EMITENTE_NOME` e `RECIBO_EMITENTE_DOCUMENTO`: identidade de quem recebe o pagamento. Preencher com o emitente correto antes de emitir recibos. O documento é um recibo interno e não substitui Receita Saúde ou nota fiscal exigível.
+- Em **Perfil e configurações → Configurações da clínica → Recibos**, preencher o nome e CPF/CNPJ do emitente. `RECIBO_EMITENTE_NOME` e `RECIBO_EMITENTE_DOCUMENTO` são apenas valores iniciais para instalações ainda não configuradas; campos salvos na tela prevalecem, inclusive vazios. O documento é um recibo interno e não substitui Receita Saúde ou nota fiscal exigível.
 - Fotos são armazenadas em `fotos_clinicas.conteudo` como `bytea`. Limite de arquivo 5 MiB, JPEG/PNG efetivamente decodificável e até 20 milhões de pixels. Metadados incluem data da captura, região, observação e autor. Não há URL pública; a imagem é servida pela API autenticada e sem cache HTTP.
 - Backups do PostgreSQL passam a incluir as imagens e devem considerar crescimento de volume. Não há novo bucket ou serviço externo nesta entrega.
 - A aplicação continua com o modelo de autorização existente: usuários autenticados da mesma clínica. Esta entrega não introduz isolamento entre clínicas nem perfis de recepção/profissional.
@@ -49,3 +49,11 @@ Não há cadastro de turmas fixas, matrícula, salas ou profissionais nesta entr
 - Backend: `./mvnw test` e `./mvnw verify` (integração PostgreSQL via Docker/Testcontainers).
 - Frontend: `npm ci`, `npm test -- --watch=false`, `npm run build`.
 - `ApiGestaoClinicaIT` exercita autenticação JWT, migrações, banco real e contratos clínicos/financeiros por HTTP. Testes unitários cobrem regras e rejeições. A validação visual da interface usa dados simulados, distinta dos testes de API reais.
+
+## Configurações da fisioterapeuta
+
+A área **Perfil e configurações** centraliza emitente dos recibos, valor e vencimento sugeridos para novas mensalidades, capacidade inicial de novos serviços, agrupamento visual da agenda, catálogo de procedimentos/equipamentos, escala de dor e limite de foto de 1 a 5 MiB. As opções de clínica são compartilhadas entre usuários da instalação atual. O perfil, foto e aparência individuais continuam separados.
+
+Catálogos permitem adicionar, renomear e desativar itens. Códigos persistidos não são removidos para preservar registros anteriores; resumos históricos e recibos emitidos não são reescritos. Os valores e vencimentos são sugestões para novos contratos, sem converter automaticamente assinaturas antigas. A capacidade de serviços existentes é editada individualmente na mesma tela, por atualização que modifica somente a capacidade.
+
+GET/PUT `/api/v1/configuracoes` usa versão e retorna 409 em conflito. V13 cria o registro inicial e amplia armazenamento dos códigos de evolução; é necessária junto da interface nova. Após erro de carregamento, recarregar antes de editar. Não há gateway ou franquia de sessões nesta etapa.

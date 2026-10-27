@@ -5,7 +5,6 @@ import com.physio.infrastructure.in.web.dto.*;
 import com.physio.infrastructure.out.persistence.entity.ReciboEntity;
 import com.physio.infrastructure.out.persistence.repository.ReciboJpaRepository;
 import jakarta.persistence.EntityNotFoundException;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
@@ -17,10 +16,10 @@ public class ReciboService {
  private final CobrancaMensalRepositoryPort cobrancas;
  private final ReciboJpaRepository recibos;
  private final AgendaTransacaoLock lock;
- private final String emitenteNome,emitenteDocumento;
+ private final ConfiguracoesService configuracoes;
  public ReciboService(AtendimentoRepositoryPort atendimentos,CobrancaMensalRepositoryPort cobrancas,ReciboJpaRepository recibos,AgendaTransacaoLock lock,
-  @Value("${recibo.emitente.nome:}") String emitenteNome,@Value("${recibo.emitente.documento:}") String emitenteDocumento) {
-  this.atendimentos=atendimentos;this.cobrancas=cobrancas;this.recibos=recibos;this.lock=lock;this.emitenteNome=emitenteNome;this.emitenteDocumento=emitenteDocumento;
+  ConfiguracoesService configuracoes) {
+  this.atendimentos=atendimentos;this.cobrancas=cobrancas;this.recibos=recibos;this.lock=lock;this.configuracoes=configuracoes;
  }
  private void origem(Integer atendimento,Integer cobranca) {
   if((atendimento==null)==(cobranca==null) || atendimento!=null&&atendimento<1 || cobranca!=null&&cobranca<1) throw new IllegalArgumentException("Informe exatamente uma origem: atendimentoId ou cobrancaId");
@@ -30,6 +29,8 @@ public class ReciboService {
   lock.bloquear();
   var existente=request.atendimentoId()!=null?recibos.findByAtendimentoId(request.atendimentoId()):recibos.findByCobrancaId(request.cobrancaId());
   if(existente.isPresent()) return dto(existente.get());
+  var config=configuracoes.buscar();
+  String emitenteNome=config.emitenteNome(),emitenteDocumento=config.emitenteDocumento();
   if(emitenteNome==null||emitenteNome.isBlank()||emitenteDocumento==null||emitenteDocumento.isBlank()) throw new IllegalArgumentException("Configure nome e documento do emitente antes de emitir recibos");
   if(request.pagadorNome()==null||request.pagadorNome().isBlank()||request.pagadorNome().length()>255||request.pagadorDocumento()==null||request.pagadorDocumento().isBlank()||request.pagadorDocumento().length()>30) throw new IllegalArgumentException("Informe nome e documento do pagador");
   Paciente paciente;BigDecimal valor;LocalDate pagamento;TipoPagamento tipo;String descricao;

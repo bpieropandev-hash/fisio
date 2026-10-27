@@ -27,6 +27,7 @@ public class FotoClinicaService {
     private static final long MAX_PIXELS = 20_000_000;
     private final FotoClinicaRepository fotos;
     private final PacienteJpaRepository pacientes;
+    private final ConfiguracoesService configuracoes;
 
     public record Imagem(byte[] conteudo, String tipoConteudo) {}
 
@@ -80,16 +81,18 @@ public class FotoClinicaService {
     }
 
     private byte[] validarImagem(MultipartFile imagem) {
-        if (imagem == null || imagem.isEmpty() || imagem.getSize() > MAX_BYTES)
-            throw new IllegalArgumentException("Envie uma imagem JPEG ou PNG de até 5 MiB.");
+        int limiteMiB=configuracoes.buscar().fotoLimiteMiB();
+        long limite=Math.min(MAX_BYTES, limiteMiB*1024L*1024L);
+        if (imagem == null || imagem.isEmpty() || imagem.getSize() > limite)
+            throw new IllegalArgumentException("Envie uma imagem JPEG ou PNG de até "+limiteMiB+" MiB.");
         if (imagem.getContentType() == null || !Set.of("image/jpeg", "image/png").contains(imagem.getContentType()))
             throw new IllegalArgumentException("Apenas imagens JPEG e PNG são aceitas.");
         try {
             byte[] bytes;
             try (var stream = imagem.getInputStream()) {
-                bytes = stream.readNBytes((int) MAX_BYTES + 1);
+                bytes = stream.readNBytes((int) limite + 1);
             }
-            if (bytes.length == 0 || bytes.length > MAX_BYTES) throw new IllegalArgumentException("Imagem excede 5 MiB.");
+            if (bytes.length == 0 || bytes.length > limite) throw new IllegalArgumentException("Imagem excede "+limiteMiB+" MiB.");
             try (var input = new MemoryCacheImageInputStream(new ByteArrayInputStream(bytes))) {
                 var readers = ImageIO.getImageReaders(input);
                 if (!readers.hasNext()) throw new IllegalArgumentException("O arquivo não contém uma imagem válida.");

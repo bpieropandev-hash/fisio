@@ -64,6 +64,38 @@ class ApiGestaoClinicaIT {
     }
 
     @Test
+    void alterarCapacidadeNaoModificaPrecoOuSituacaoDoServico() throws Exception {
+        int id=servico(1);
+        assertThat(request(HttpMethod.PUT,"/api/v1/servicos/"+id+"/capacidade",Map.of("capacidade",4)).getStatusCode().value()).isEqualTo(204);
+        var servico=ok(HttpMethod.GET,"/api/v1/servicos/"+id,null,200);
+        assertThat(servico.path("capacidade").asInt()).isEqualTo(4);
+        assertThat(servico.path("valorBase").decimalValue()).isEqualByComparingTo("100");
+        assertThat(servico.path("ativo").asBoolean()).isTrue();
+        assertThat(request(HttpMethod.PUT,"/api/v1/servicos/"+id+"/capacidade",Map.of("capacidade",0)).getStatusCode().value()).isEqualTo(400);
+    }
+
+    @Test
+    void configuracoesPersistemComControleDeVersao() throws Exception {
+        String path="/api/v1/configuracoes";
+        var original=(com.fasterxml.jackson.databind.node.ObjectNode)ok(HttpMethod.GET,path,null,200);
+        var editado=original.deepCopy();
+        editado.put("emitenteNome","Fisioterapeuta configurada");
+        editado.put("emitenteDocumento","12345678901");
+        editado.put("fotoLimiteMiB",2); editado.put("agruparAgenda",false);
+        var salvo=ok(HttpMethod.PUT,path,editado,200);
+        try {
+            var consultado=ok(HttpMethod.GET,path,null,200);
+            assertThat(consultado.path("emitenteNome").asText()).isEqualTo("Fisioterapeuta configurada");
+            assertThat(consultado.path("fotoLimiteMiB").asInt()).isEqualTo(2);
+            assertThat(consultado.path("agruparAgenda").asBoolean()).isFalse();
+            assertThat(request(HttpMethod.PUT,path,editado).getStatusCode().value()).isEqualTo(409);
+        } finally {
+            original.put("versao",salvo.path("versao").asLong());
+            ok(HttpMethod.PUT,path,original,200);
+        }
+    }
+
+    @Test
     void evolucaoPorMarcacaoPersisteResumoHistoricoERejeitaVersaoAntiga() throws Exception {
         int paciente = paciente();
         int servico = servico(2);
