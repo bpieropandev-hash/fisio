@@ -20,6 +20,10 @@ public class CobrancaMensalPersistenceAdapter implements CobrancaMensalRepositor
 
     private final CobrancaMensalJpaRepository jpaRepository;
     private final CobrancaMensalMapper mapper;
+    private final jakarta.persistence.EntityManager entityManager;
+    @Override public void bloquear(Long id) {
+        entityManager.find(CobrancaMensalEntity.class, Math.toIntExact(id), jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+    }
 
     @Override
     public CobrancaMensal salvar(CobrancaMensal cobrancaMensal) {

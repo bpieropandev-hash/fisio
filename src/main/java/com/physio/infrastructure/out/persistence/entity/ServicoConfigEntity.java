@@ -19,6 +19,7 @@ public class ServicoConfigEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
+    private Integer capacidade;
 
     @Column(nullable = false, length = 255)
     private String nome;

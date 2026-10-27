@@ -2,6 +2,7 @@ package com.physio.infrastructure.out.persistence.repository;
 
 import com.physio.domain.model.StatusAtendimento;
 import com.physio.domain.model.StatusPagamento;
+import com.physio.domain.model.ModalidadeCobranca;
 import com.physio.domain.model.TipoServico;
 import com.physio.infrastructure.out.persistence.entity.AtendimentoEntity;
 import com.physio.infrastructure.out.persistence.entity.PacienteEntity;
@@ -67,6 +68,7 @@ class AtendimentoJpaRepositoryIT {
                 .pctProfissional(new BigDecimal("80"))
                 .ativo(true)
                 .tipo(TipoServico.PILATES)
+                .capacidade(15)
                 .build());
     }
 
@@ -82,6 +84,7 @@ class AtendimentoJpaRepositoryIT {
                 .pctProfissionalSnapshot(new BigDecimal("80"))
                 .status(status)
                 .statusPagamento(statusPagamento)
+                .modalidadeCobranca(ModalidadeCobranca.AVULSO)
                 .build());
     }
 

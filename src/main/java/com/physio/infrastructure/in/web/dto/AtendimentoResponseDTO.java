@@ -16,6 +16,11 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class AtendimentoResponseDTO {
     private Integer id;
+    private LocalDateTime dataHoraFim;
+    private String statusPagamento;
+    private Integer assinaturaId;
+    private String modalidadeCobranca;
+    private java.time.LocalDate dataPagamento;
     private Integer pacienteId;
     private Integer servicoBaseId;
     

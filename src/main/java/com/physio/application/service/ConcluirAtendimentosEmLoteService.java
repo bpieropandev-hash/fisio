@@ -39,6 +39,7 @@ public class ConcluirAtendimentosEmLoteService implements ConcluirAtendimentosEm
                         .evolucao(item.evolucao())
                         .recebedor(item.recebedor())
                         .tipoPagamento(item.tipoPagamento())
+                        .dataPagamento(item.recebedor()!=null && item.tipoPagamento()!=null ? java.time.LocalDate.now() : null)
                         .build();
 
                 atualizarAtendimentoUseCase.atualizar(item.id(), domain);

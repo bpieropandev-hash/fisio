@@ -37,5 +37,8 @@ public class ServicoCreateRequestDTO {
     @Schema(description = "Tipo do serviço", example = "FISIOTERAPIA", allowableValues = {"FISIOTERAPIA","PILATES"})
     private TipoServico tipo;
 
+    @jakarta.validation.constraints.Min(1)
+    @jakarta.validation.constraints.Max(100)
+    private Integer capacidade;
     private Boolean ativo;
 }

@@ -27,6 +27,10 @@ public class Atendimento {
     private Recebedor recebedor;
     private TipoPagamento tipoPagamento;
     private StatusPagamento statusPagamento;
+    private Integer assinaturaId;
+    @Builder.Default
+    private ModalidadeCobranca modalidadeCobranca = ModalidadeCobranca.LEGADO;
+    private java.time.LocalDate dataPagamento;
     
     // Método de negócio para criar snapshot financeiro
     public void criarSnapshotFinanceiro(ServicoConfig servico) {

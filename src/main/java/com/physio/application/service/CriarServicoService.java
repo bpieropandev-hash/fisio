@@ -32,6 +32,8 @@ public class CriarServicoService implements CriarServicoUseCase {
             servico.setAtivo(Boolean.TRUE);
         }
 
+        if(servico.getCapacidade()==null) servico.setCapacidade(ValidadorCapacidade.capacidade(servico));
+        if(servico.getCapacidade()<1 || servico.getCapacidade()>100) throw new IllegalArgumentException("Capacidade deve estar entre 1 e 100");
         // Salvar
         ServicoConfig salvo = servicoRepositoryPort.salvar(servico);
         log.info("Serviço criado com ID: {}", salvo.getId());

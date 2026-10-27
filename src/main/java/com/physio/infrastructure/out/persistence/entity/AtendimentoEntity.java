@@ -66,6 +66,14 @@ public class AtendimentoEntity {
     @Column(name = "status_pagamento", length = 20, nullable = false)
     private StatusPagamento statusPagamento;
 
+    @Column(name = "assinatura_id")
+    private Integer assinaturaId;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "modalidade_cobranca", nullable = false, length = 20)
+    @Builder.Default
+    private com.physio.domain.model.ModalidadeCobranca modalidadeCobranca = com.physio.domain.model.ModalidadeCobranca.LEGADO;
+    @Column(name = "data_pagamento")
+    private java.time.LocalDate dataPagamento;
     public PacienteEntity getPaciente() {
         return paciente;
     }

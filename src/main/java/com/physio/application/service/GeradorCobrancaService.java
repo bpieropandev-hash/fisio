@@ -32,6 +32,7 @@ public class GeradorCobrancaService implements GerarCobrancasUseCase {
     public int gerarCobrancasDoMes(int mes, int ano) {
         log.info("Iniciando geração de cobranças para mês: {}/{}", mes, ano);
 
+        var competencia = java.time.YearMonth.of(ano, mes);
         List<Assinatura> assinaturasAtivas = assinaturaRepositoryPort.listarAtivas();
         log.info("Encontradas {} assinaturas ativas", assinaturasAtivas.size());
 
@@ -43,6 +44,8 @@ public class GeradorCobrancaService implements GerarCobrancasUseCase {
         int cobrancasGeradas = 0;
 
         for (Assinatura assinatura : assinaturasAtivas) {
+            if (assinatura.getDataInicio()!=null && competencia.isBefore(java.time.YearMonth.from(assinatura.getDataInicio()))) continue;
+            if (assinatura.getDataCancelamento()!=null && competencia.isAfter(java.time.YearMonth.from(assinatura.getDataCancelamento()))) continue;
             boolean jaExiste = assinaturaIdsComCobranca.contains(assinatura.getId());
 
             if (jaExiste) {

@@ -30,4 +30,6 @@ public class AtendimentoUpdateRequestDTO {
 
     private Recebedor recebedor;
     private TipoPagamento tipoPagamento;
+    private java.time.LocalDate dataPagamento;
+    private LocalDateTime dataHoraFim;
 }

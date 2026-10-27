@@ -20,6 +20,12 @@ public class AtendimentoPersistenceAdapter implements AtendimentoRepositoryPort 
 
     private final AtendimentoJpaRepository jpaRepository;
     private final AtendimentoMapper mapper;
+    private final com.physio.application.service.AgendaTransacaoLock agendaLock;
+    private final jakarta.persistence.EntityManager entityManager;
+    private final com.physio.infrastructure.out.persistence.repository.EvolucaoClinicaRepository evolucoes;
+    @Override public void bloquearAgenda() { agendaLock.bloquear(); }
+    @Override public void bloquearAtendimento(Long id) { entityManager.find(AtendimentoEntity.class, Math.toIntExact(id), jakarta.persistence.LockModeType.PESSIMISTIC_WRITE); }
+    @Override public boolean possuiEvolucaoEstruturada(Long id) { return evolucoes.findFirstByAtendimentoIdOrderByVersaoDesc(Math.toIntExact(id)).isPresent(); }
 
     @Override
     public Atendimento salvar(Atendimento atendimento) {

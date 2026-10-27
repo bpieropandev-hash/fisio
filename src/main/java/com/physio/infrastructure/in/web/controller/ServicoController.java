@@ -57,6 +57,7 @@ public class ServicoController {
                 .pctProfissional(request.getPctProfissional())
                 .ativo(request.getAtivo())
                 .tipo(request.getTipo())
+                .capacidade(request.getCapacidade())
                 .build();
 
         ServicoConfig salvo = criarServicoUseCase.criarServico(domain);
@@ -69,6 +70,7 @@ public class ServicoController {
                 .pctProfissional(salvo.getPctProfissional())
                 .ativo(salvo.getAtivo())
                 .tipo(salvo.getTipo())
+                .capacidade(salvo.getCapacidade())
                 .build();
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -87,6 +89,7 @@ public class ServicoController {
                 .pctProfissional(s.getPctProfissional())
                 .ativo(s.getAtivo())
                 .tipo(s.getTipo())
+                .capacidade(s.getCapacidade())
                 .build()).toList();
         return ResponseEntity.ok(dtoList);
     }
@@ -105,6 +108,7 @@ public class ServicoController {
                 .pctProfissional(servico.getPctProfissional())
                 .ativo(servico.getAtivo())
                 .tipo(servico.getTipo())
+                .capacidade(servico.getCapacidade())
                 .build();
         return ResponseEntity.ok(dto);
     }
@@ -120,6 +124,7 @@ public class ServicoController {
                 .pctProfissional(request.getPctProfissional())
                 .ativo(request.getAtivo())
                 .tipo(request.getTipo())
+                .capacidade(request.getCapacidade())
                 .build();
 
         var atualizado = atualizarServicoUseCase.atualizar(id, domain);
@@ -131,6 +136,7 @@ public class ServicoController {
                 .pctProfissional(atualizado.getPctProfissional())
                 .ativo(atualizado.getAtivo())
                 .tipo(atualizado.getTipo())
+                .capacidade(atualizado.getCapacidade())
                 .build();
         return ResponseEntity.ok(dto);
     }

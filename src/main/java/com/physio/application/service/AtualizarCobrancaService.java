@@ -25,6 +25,7 @@ public class AtualizarCobrancaService implements AtualizarCobrancaUseCase {
     public CobrancaMensal atualizarCobranca(Long cobrancaId, StatusCobranca status, LocalDate dataPagamento, Recebedor recebedor, TipoPagamento tipoPagamento) {
         log.info("Atualizando cobrança - ID: {}, Status: {}", cobrancaId, status);
 
+        cobrancaMensalRepositoryPort.bloquear(cobrancaId);
         CobrancaMensal cobranca = cobrancaMensalRepositoryPort.buscarPorId(cobrancaId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cobrança não encontrada: " + cobrancaId));
 
@@ -39,6 +40,7 @@ public class AtualizarCobrancaService implements AtualizarCobrancaUseCase {
             if (dataPagamento == null) {
                 throw new IllegalArgumentException("Data de pagamento é obrigatória quando status é PAGO");
             }
+            if (dataPagamento.isAfter(LocalDate.now())) throw new IllegalArgumentException("Data de pagamento não pode ser futura");
             if (recebedor == null) {
                 throw new IllegalArgumentException("Recebedor é obrigatório quando status é PAGO");
             }

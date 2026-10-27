@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.Set;
 
 public interface CobrancaMensalRepositoryPort {
+    default void bloquear(Long id) {}
     CobrancaMensal salvar(CobrancaMensal cobrancaMensal);
     Optional<CobrancaMensal> buscarPorId(Long id);
     List<CobrancaMensal> listarTodas();
