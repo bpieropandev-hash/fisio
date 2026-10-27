@@ -111,7 +111,9 @@ public class RemarcacaoService {
     novos.add(novo);
    }
   }
-  var ocupacao=agenda.listarConflitosPorPeriodo(p.inicio().atStartOfDay(),p.fim().plusDays(2).atStartOfDay()).stream()
+  var fimConsulta=novos.stream().map(Atendimento::getDataHoraFim).max(LocalDateTime::compareTo)
+   .filter(fim->fim.isAfter(p.fim().plusDays(1).atStartOfDay())).orElse(p.fim().plusDays(1).atStartOfDay());
+  var ocupacao=agenda.listarConflitosPorPeriodo(p.inicio().atStartOfDay(),fimConsulta).stream()
    .sorted(Comparator.comparing(Atendimento::getId)).toList();
   var restantes=ocupacao.stream().filter(a->!idsElegiveis.contains(a.getId())&&a.getStatus()!=StatusAtendimento.CANCELADO).toList();
   for(int i=0;i<novos.size();i++){
