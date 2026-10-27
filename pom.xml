@@ -25,6 +25,8 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <argLine></argLine>
+        <mockito.agent.argLine>-javaagent:"${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar" -Xshare:off</mockito.agent.argLine>
     </properties>
 
     <dependencies>
@@ -203,12 +205,23 @@
                  </configuration>
              </plugin>
 
+             <plugin>
+                 <groupId>org.apache.maven.plugins</groupId>
+                 <artifactId>maven-surefire-plugin</artifactId>
+                 <configuration>
+                     <argLine>@{argLine} ${mockito.agent.argLine}</argLine>
+                 </configuration>
+             </plugin>
+
              <!-- Testes *IT.java (Testcontainers, precisam de Docker/Podman) rodam só em
                   "mvn verify", não em "mvn test" — mantém o ciclo rápido de unit test sem
                   depender de container disponível. -->
              <plugin>
                  <groupId>org.apache.maven.plugins</groupId>
                  <artifactId>maven-failsafe-plugin</artifactId>
+                 <configuration>
+                     <argLine>@{argLine} ${mockito.agent.argLine}</argLine>
+                 </configuration>
                  <executions>
                      <execution>
                          <goals>

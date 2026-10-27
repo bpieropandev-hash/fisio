@@ -23,6 +23,13 @@ public class ReativarAssinaturaService implements ReativarAssinaturaUseCase {
         Assinatura assinatura = assinaturaRepositoryPort.buscarPorId(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Assinatura não encontrada: " + id));
 
+        if (Boolean.FALSE.equals(assinatura.getPaciente().getAtivo())) {
+            throw new IllegalArgumentException("Paciente não está ativo: " + assinatura.getPaciente().getId());
+        }
+        if (Boolean.FALSE.equals(assinatura.getServico().getAtivo())) {
+            throw new IllegalArgumentException("Serviço não está ativo: " + assinatura.getServico().getId());
+        }
+
         if (assinatura.getAtivo() != null && assinatura.getAtivo()) {
             log.info("Assinatura já está ativa - ID: {}", id);
             return assinatura;

@@ -228,6 +228,50 @@ class ApiGestaoClinicaIT {
         assertThat(ok(HttpMethod.GET, "/api/v1/recibos?cobrancaId=" + cobranca, null, 200).size()).isEqualTo(1);
     }
 
+    @Test
+    void reajusteAtualizaCatalogoEAssinaturasPreservandoNegociados() throws Exception {
+        int servico = servico(4), a = paciente(), b = paciente();
+        int normal = ok(HttpMethod.POST, "/api/v1/assinaturas", Map.of("pacienteIds", List.of(a), "servicoId", servico,
+                "valorMensal", 100, "diaVencimento", 5, "dataInicio", LocalDate.now().withDayOfMonth(1).toString()), 201).get(0).path("id").asInt();
+        int negociada = ok(HttpMethod.POST, "/api/v1/assinaturas", Map.of("pacienteIds", List.of(b), "servicoId", servico,
+                "valorMensal", 80, "diaVencimento", 5, "dataInicio", LocalDate.now().withDayOfMonth(1).toString()), 201).get(0).path("id").asInt();
+        ok(HttpMethod.POST, "/api/v1/financeiro/gerar-mensalidades", Map.of("mes", LocalDate.now().getMonthValue(), "ano", LocalDate.now().getYear()), 200);
+        String novoNome = "Pilates reajustado " + sequencia.incrementAndGet();
+        var resultado = ok(HttpMethod.POST, "/api/v1/servicos/" + servico + "/reajuste", Map.of(
+                "novoValorBase", 120, "somenteAssinaturasNoValorAntigo", true, "atualizarCobrancasPendentes", true,
+                "dadosServico", Map.of("nome", novoNome, "tipo", "PILATES", "valorBase", 120,
+                        "pctClinica", 20, "pctProfissional", 80, "capacidade", 6, "ativo", true)), 200);
+        assertThat(resultado.path("assinaturasAtualizadas").asInt()).isEqualTo(1);
+        assertThat(ok(HttpMethod.GET, "/api/v1/servicos/" + servico, null, 200).path("nome").asText()).isEqualTo(novoNome);
+        assertThat(ok(HttpMethod.GET, "/api/v1/assinaturas/" + normal, null, 200).path("valorMensal").decimalValue()).isEqualByComparingTo("120");
+        assertThat(ok(HttpMethod.GET, "/api/v1/assinaturas/" + negociada, null, 200).path("valorMensal").decimalValue()).isEqualByComparingTo("80");
+        assertThat(ok(HttpMethod.GET, "/api/v1/cobrancas/assinatura/" + normal, null, 200).get(0).path("valor").decimalValue()).isEqualByComparingTo("120");
+        assertThat(ok(HttpMethod.GET, "/api/v1/cobrancas/assinatura/" + negociada, null, 200).get(0).path("valor").decimalValue()).isEqualByComparingTo("80");
+    }
+
+    @Test
+    void catalogoInvalidoNaoAplicaReajusteParcial() throws Exception {
+        int servico = servico(4), outro = servico(4), p = paciente();
+        String nomeOcupado = ok(HttpMethod.GET, "/api/v1/servicos/" + outro, null, 200).path("nome").asText();
+        int assinatura = ok(HttpMethod.POST, "/api/v1/assinaturas", Map.of("pacienteIds", List.of(p), "servicoId", servico,
+                "valorMensal", 100, "diaVencimento", 5), 201).get(0).path("id").asInt();
+        assertThat(request(HttpMethod.POST, "/api/v1/servicos/" + servico + "/reajuste", Map.of(
+                "novoValorBase", 150, "dadosServico", Map.of("nome", nomeOcupado, "tipo", "PILATES", "valorBase", 150,
+                        "pctClinica", 20, "pctProfissional", 80, "capacidade", 6, "ativo", true))).getStatusCode().value()).isEqualTo(400);
+        assertThat(ok(HttpMethod.GET, "/api/v1/servicos/" + servico, null, 200).path("valorBase").decimalValue()).isEqualByComparingTo("100");
+        assertThat(ok(HttpMethod.GET, "/api/v1/assinaturas/" + assinatura, null, 200).path("valorMensal").decimalValue()).isEqualByComparingTo("100");
+    }
+
+    @Test
+    void reajusteSemDadosServicoMantemContratoAnterior() throws Exception {
+        int servico = servico(2), p = paciente();
+        int assinatura = ok(HttpMethod.POST, "/api/v1/assinaturas", Map.of("pacienteIds", List.of(p), "servicoId", servico,
+                "valorMensal", 100, "diaVencimento", 5), 201).get(0).path("id").asInt();
+        var resultado = ok(HttpMethod.POST, "/api/v1/servicos/" + servico + "/reajuste", Map.of("novoValorBase", 130), 200);
+        assertThat(resultado.path("assinaturasAtualizadas").asInt()).isEqualTo(1);
+        assertThat(ok(HttpMethod.GET, "/api/v1/assinaturas/" + assinatura, null, 200).path("valorMensal").decimalValue()).isEqualByComparingTo("130");
+    }
+
     private int paciente() throws Exception {
         int n = sequencia.incrementAndGet();
         return ok(HttpMethod.POST, "/api/v1/pacientes", Map.of("nome", "Paciente de teste " + n, "cpf", String.format("%011d", n)), 201).path("id").asInt();

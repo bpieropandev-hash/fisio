@@ -109,7 +109,7 @@ public class RelatorioPDFService {
             addHeaderCell(table, "Forma Pagto.");
             addHeaderCell(table, "Acerto");
 
-            NumberFormat nf = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
+            NumberFormat nf = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR"));
             DateTimeFormatter fmtHora = DateTimeFormatter.ofPattern("dd/MM HH:mm");
 
             BigDecimal saldoFinalProfissional = BigDecimal.ZERO;

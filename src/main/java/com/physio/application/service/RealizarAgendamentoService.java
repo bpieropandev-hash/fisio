@@ -54,6 +54,10 @@ public class RealizarAgendamentoService implements RealizarAgendamentoUseCase {
         Paciente paciente = pacienteRepositoryPort.buscarPorId(pacienteId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Paciente não encontrado ou inativo: " + pacienteId));
 
+        if (Boolean.FALSE.equals(paciente.getAtivo())) {
+            throw new IllegalArgumentException("Paciente não está ativo: " + pacienteId);
+        }
+
         ServicoConfig servico = servicoRepositoryPort.buscarPorIdEAtivo(servicoId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Serviço não encontrado ou inativo: " + servicoId));
 

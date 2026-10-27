@@ -1,6 +1,7 @@
 package com.physio.application.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.physio.infrastructure.in.web.dto.ConfiguracoesDTO;
 import com.physio.infrastructure.out.persistence.entity.ConfiguracoesEntity;
 import com.physio.infrastructure.out.persistence.repository.ConfiguracoesRepository;
@@ -19,7 +20,7 @@ class ConfiguracoesServiceTest {
         when(repository.bloquear()).thenReturn(Optional.of(row));
     }
     ConfiguracoesDTO patch(ConfiguracoesDTO base, String key, Object value) {
-        Map<String,Object> values = mapper.convertValue(base, Map.class);
+        Map<String,Object> values = mapper.convertValue(base, new TypeReference<Map<String,Object>>() {});
         values.put(key,value); return mapper.convertValue(values,ConfiguracoesDTO.class);
     }
     @Test void defaultsUsamEnvAtePrimeiroSaveEBrancosPersistidosNaoRetornamEnv() {

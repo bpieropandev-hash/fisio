@@ -172,12 +172,22 @@ public class ServicoController {
         boolean somenteAssinaturasNoValorAntigo = request.getSomenteAssinaturasNoValorAntigo() == null || request.getSomenteAssinaturasNoValorAntigo();
         boolean atualizarCobrancasPendentes = Boolean.TRUE.equals(request.getAtualizarCobrancasPendentes());
 
+        ServicoConfig dadosServico = null;
+        if (request.getDadosServico() != null) {
+            var dados = request.getDadosServico();
+            dadosServico = ServicoConfig.builder()
+                    .nome(dados.getNome()).tipo(dados.getTipo()).valorBase(request.getNovoValorBase())
+                    .pctClinica(dados.getPctClinica()).pctProfissional(dados.getPctProfissional())
+                    .ativo(dados.getAtivo()).capacidade(dados.getCapacidade()).build();
+        }
+
         ReajusteResultado resultado = reajustarServicoUseCase.reajustar(
                 id,
                 request.getNovoValorBase(),
                 aplicarEmAssinaturasAtivas,
                 somenteAssinaturasNoValorAntigo,
-                atualizarCobrancasPendentes
+                atualizarCobrancasPendentes,
+                dadosServico
         );
 
         ServicoReajusteResponseDTO dto = ServicoReajusteResponseDTO.builder()

@@ -31,4 +31,7 @@ public class ServicoReajusteRequestDTO {
     @Schema(description = "Reajusta também cobranças PENDENTES do mês corrente", example = "false")
     @Builder.Default
     private Boolean atualizarCobrancasPendentes = false;
+    @jakarta.validation.Valid
+    @Schema(description = "Edição opcional do catálogo, aplicada na mesma transação do reajuste")
+    private ServicoCreateRequestDTO dadosServico;
 }

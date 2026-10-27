@@ -46,7 +46,7 @@ class GestaoFinanceiraTest {
     @Test void recorrenciaNaoDeveCriarParcialmenteSeAlgumaDataConflita() {
         var agenda = agenda();
         servico.setTipo(TipoServico.FISIOTERAPIA);
-        when(atendimentos.listarConflitosPorPeriodo(any(), any())).thenReturn(List.of(), List.of(Atendimento.builder()
+        when(atendimentos.listarConflitosPorPeriodo(any(), any())).thenReturn(List.of()).thenReturn(List.of(Atendimento.builder()
                 .id(8).paciente(paciente).servicoBase(servico).status(StatusAtendimento.AGENDADO).build()));
         assertThrows(IllegalArgumentException.class, () -> agenda.realizarAgendamento(1L, 1L, inicio, inicio.toLocalDate().plusWeeks(1), null, 1));
         verify(atendimentos, never()).salvar(any());

@@ -6,6 +6,7 @@ import com.physio.domain.model.ReajusteResultado;
 import com.physio.domain.model.ServicoConfig;
 import com.physio.domain.model.StatusCobranca;
 import com.physio.domain.ports.in.ReajustarServicoUseCase;
+import com.physio.domain.ports.in.AtualizarServicoUseCase;
 import com.physio.domain.ports.out.AssinaturaRepositoryPort;
 import com.physio.domain.ports.out.CobrancaMensalRepositoryPort;
 import com.physio.domain.ports.out.ServicoRepositoryPort;
@@ -27,11 +28,20 @@ public class ReajustarServicoService implements ReajustarServicoUseCase {
     private final ServicoRepositoryPort servicoRepositoryPort;
     private final AssinaturaRepositoryPort assinaturaRepositoryPort;
     private final CobrancaMensalRepositoryPort cobrancaMensalRepositoryPort;
+    private final AtualizarServicoUseCase atualizarServicoUseCase;
 
     @Override
     @Transactional
     public ReajusteResultado reajustar(Long servicoId, BigDecimal novoValorBase, boolean aplicarEmAssinaturasAtivas,
                                         boolean somenteAssinaturasNoValorAntigo, boolean atualizarCobrancasPendentes) {
+        return reajustar(servicoId, novoValorBase, aplicarEmAssinaturasAtivas,
+                somenteAssinaturasNoValorAntigo, atualizarCobrancasPendentes, null);
+    }
+
+    @Override
+    @Transactional
+    public ReajusteResultado reajustar(Long servicoId, BigDecimal novoValorBase, boolean aplicarEmAssinaturasAtivas,
+            boolean somenteAssinaturasNoValorAntigo, boolean atualizarCobrancasPendentes, ServicoConfig dadosServico) {
         log.info("Reajustando serviço - ID: {}, novoValorBase: {}, aplicarEmAssinaturasAtivas: {}, somenteAssinaturasNoValorAntigo: {}, atualizarCobrancasPendentes: {}",
                 servicoId, novoValorBase, aplicarEmAssinaturasAtivas, somenteAssinaturasNoValorAntigo, atualizarCobrancasPendentes);
 
@@ -39,6 +49,11 @@ public class ReajustarServicoService implements ReajustarServicoUseCase {
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Serviço não encontrado: " + servicoId));
 
         BigDecimal valorAntigo = servico.getValorBase();
+
+        // Capture the previous price before editing the catalog; the whole operation shares this transaction.
+        if (dadosServico != null) {
+            servico = atualizarServicoUseCase.atualizar(servicoId, dadosServico);
+        }
 
         servico.setValorBase(novoValorBase);
         servicoRepositoryPort.salvar(servico);
