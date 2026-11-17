@@ -34,6 +34,10 @@ public class AvaliacaoFisicaController {
         var a = service.arquivo(pacienteId, avaliacaoId);
         return ResponseEntity.ok().contentType(MediaType.parseMediaType(a.tipoConteudo()))
                 .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                // Conteúdo enviado por usuário: nunca renderizar inline na origem da API.
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename(a.nomeArquivo(), java.nio.charset.StandardCharsets.UTF_8).build().toString())
+                .header("Content-Security-Policy", "default-src 'none'; sandbox")
                 .header("X-Content-Type-Options", "nosniff").body(a.conteudo());
     }
 
