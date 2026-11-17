@@ -15,6 +15,6 @@ public class UploadExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorResponseDTO> limiteDeUpload(MaxUploadSizeExceededException ex) {
         return ResponseEntity.badRequest().body(new ErrorResponseDTO(400,
-                "Envie uma imagem JPEG ou PNG de até 5 MiB."));
+                "O arquivo excede o tamanho máximo permitido (10 MiB para avaliações, limite configurado para fotos)."));
     }
 }

@@ -12,7 +12,7 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Order(Ordered.HIGHEST_PRECEDENCE)
-@RestControllerAdvice(assignableTypes={FotoClinicaController.class,EvolucaoClinicaController.class,ConfiguracoesController.class})
+@RestControllerAdvice(assignableTypes={FotoClinicaController.class,AvaliacaoFisicaController.class,EvolucaoClinicaController.class,ConfiguracoesController.class})
 public class ClinicaExceptionHandler {
     @ExceptionHandler({EvolucaoVersaoConflitanteException.class, ConfiguracoesVersaoConflitanteException.class})
     public ResponseEntity<ErrorResponseDTO> conflito(RuntimeException ex) {
