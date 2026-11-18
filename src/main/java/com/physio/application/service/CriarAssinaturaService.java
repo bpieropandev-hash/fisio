@@ -25,6 +25,7 @@ public class CriarAssinaturaService implements CriarAssinaturaUseCase {
     private final AssinaturaRepositoryPort assinaturaRepositoryPort;
     private final PacienteRepositoryPort pacienteRepositoryPort;
     private final ServicoRepositoryPort servicoRepositoryPort;
+    private final VincularAtendimentosAssinaturaService vincularAtendimentos;
 
     @Override
     @Transactional
@@ -74,6 +75,8 @@ public class CriarAssinaturaService implements CriarAssinaturaUseCase {
             // Salvar assinatura
             Assinatura assinaturaSalva = assinaturaRepositoryPort.salvar(assinatura);
             created.add(assinaturaSalva);
+            // O que já estava agendado como avulso a partir do início da vigência passa a ser mensalidade
+            vincularAtendimentos.vincular(assinaturaSalva);
 
             log.info("Assinatura criada com sucesso - ID: {} (Paciente: {})", assinaturaSalva.getId(), pacienteId);
         }

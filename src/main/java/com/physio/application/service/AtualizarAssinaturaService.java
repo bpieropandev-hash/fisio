@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 public class AtualizarAssinaturaService implements AtualizarAssinaturaUseCase {
 
     private final AssinaturaRepositoryPort assinaturaRepositoryPort;
+    private final VincularAtendimentosAssinaturaService vincularAtendimentos;
 
     @Override
     @Transactional
@@ -41,6 +42,8 @@ public class AtualizarAssinaturaService implements AtualizarAssinaturaUseCase {
         }
 
         Assinatura salva = assinaturaRepositoryPort.salvar(assinatura);
+        // Idempotente: cobre o que ainda estiver avulso a partir do início (assinaturas criadas antes desta regra)
+        vincularAtendimentos.vincular(salva);
 
         log.info("Assinatura atualizada com sucesso - ID: {}", id);
         return salva;
